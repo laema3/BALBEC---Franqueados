@@ -346,64 +346,117 @@ export const SettingsManager: React.FC = () => {
 
         {/* Section 4: BlueFocus ERP Preparation */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Cpu className="w-5 h-5 text-blue-600" />
-            <h3 className="font-bold text-slate-900 text-sm">Integração BlueFocus (ERP Local)</h3>
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Cpu className="w-5 h-5 text-blue-600" />
+              <h3 className="font-bold text-slate-900 text-sm">Integração BlueFocus (Valim Software)</h3>
+            </div>
+            <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+              WebServices SOAP
+            </span>
           </div>
 
           <p className="text-xs text-slate-500">
-            Camada desacoplada pronta para integração com o software de retaguarda BlueFocus utilizado na loja física.
+            Conexão com o sistema de retaguarda BlueFocus para sincronização de produtos (ExportaCadSAT), consulta de estoque (ConsultaQtde) e registro de pré-vendas (RegPreVendaSAT).
           </p>
 
           <div className="space-y-3 text-xs">
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">URL do Web Service / API</label>
-              <input
-                type="text"
-                value={formData.blueFocus?.apiUrl || 'http://localhost:8080/api/bluefocus'}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    blueFocus: { ...formData.blueFocus, apiUrl: e.target.value } as any,
-                  })
-                }
-                placeholder="http://192.168.1.100:8080/api/bluefocus"
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Chave de Autenticação (autentica)</label>
+                <input
+                  type="text"
+                  value={formData.blueFocus?.autentica || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      blueFocus: { ...formData.blueFocus, autentica: e.target.value } as any,
+                    })
+                  }
+                  placeholder="ex: c89f2aab-5aa6-451d-8da8-06709422d3da"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Código da Empresa (EmpresaId)</label>
+                <input
+                  type="text"
+                  value={formData.blueFocus?.empresaId || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      blueFocus: { ...formData.blueFocus, empresaId: e.target.value } as any,
+                    })
+                  }
+                  placeholder="ex: EMPRESATESTE ou BALBEC01"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Token de Autenticação / API Key</label>
-              <input
-                type="password"
-                value={formData.blueFocus?.apiKey || ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    blueFocus: { ...formData.blueFocus, apiKey: e.target.value } as any,
-                  })
-                }
-                placeholder="Token de integração gerado no BlueFocus..."
-                className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Usuário no PDV (UsuarioId)</label>
+                <input
+                  type="text"
+                  value={formData.blueFocus?.usuarioId || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      blueFocus: { ...formData.blueFocus, usuarioId: e.target.value } as any,
+                    })
+                  }
+                  placeholder="ex: CAIXA ou ADMIN"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Código do PDV (PDVCodigo)</label>
+                <input
+                  type="number"
+                  value={formData.blueFocus?.pdvCodigo ?? 2}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      blueFocus: { ...formData.blueFocus, pdvCodigo: parseInt(e.target.value, 10) || 2 } as any,
+                    })
+                  }
+                  placeholder="2 ou 5"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs"
+                />
+              </div>
             </div>
 
-            <div className="pt-2 flex items-center justify-between gap-3">
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={handleTestBlueFocus}
-                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition"
+                className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Testar Conexão</span>
+                <span>Testar Conexão SOAP</span>
               </button>
 
-              {testBlueFocusStatus && (
-                <span className="text-xs font-bold text-blue-800">
-                  {testBlueFocusStatus}
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  const blueFocusTabBtn = document.getElementById('admin-tab-bluefocus');
+                  if (blueFocusTabBtn) blueFocusTabBtn.click();
+                }}
+                className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 px-4 py-2 rounded-xl text-xs font-bold transition border border-slate-800"
+              >
+                <Cpu className="w-3.5 h-3.5" />
+                <span>Acessar Central Completa BlueFocus</span>
+              </button>
             </div>
+
+            {testBlueFocusStatus && (
+              <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-xs font-bold text-blue-900">
+                {testBlueFocusStatus}
+              </div>
+            )}
           </div>
         </div>
       </div>

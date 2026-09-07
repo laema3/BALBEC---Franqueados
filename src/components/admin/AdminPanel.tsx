@@ -18,6 +18,8 @@ import {
   ArrowLeft,
   Sparkles,
   UserCheck,
+  Cpu,
+  ExternalLink,
 } from 'lucide-react';
 import { AdminDashboard } from './AdminDashboard.js';
 import { OrdersManager } from './OrdersManager.js';
@@ -25,10 +27,11 @@ import { FranchiseesManager } from './FranchiseesManager.js';
 import { CategoriesManager } from './CategoriesManager.js';
 import { ProductsManager } from './ProductsManager.js';
 import { SettingsManager } from './SettingsManager.js';
+import { BlueFocusManager } from './BlueFocusManager.js';
 import { useApp } from '../../context/AppContext.js';
 import { useAuth } from '../../context/AuthContext.js';
 
-type AdminTab = 'dashboard' | 'orders' | 'franchisees' | 'categories' | 'products' | 'settings';
+type AdminTab = 'dashboard' | 'orders' | 'franchisees' | 'categories' | 'products' | 'bluefocus' | 'settings';
 
 export const AdminPanel: React.FC = () => {
   const { setCurrentView } = useApp();
@@ -197,6 +200,7 @@ export const AdminPanel: React.FC = () => {
     { id: 'franchisees', label: 'Franqueados', icon: Users },
     { id: 'products', label: 'Salgados', icon: Cookie },
     { id: 'categories', label: 'Categorias', icon: Tags },
+    { id: 'bluefocus', label: 'Integração BlueFocus', icon: Cpu },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
@@ -266,13 +270,25 @@ export const AdminPanel: React.FC = () => {
 
           {/* Quick Action Buttons & Logout in Sidebar */}
           <div className="pt-4 mt-4 border-t border-slate-100 space-y-2">
-            <button
-              onClick={() => setCurrentView('tv')}
-              className="w-full flex items-center justify-start gap-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-3 py-2.5 rounded-xl text-xs transition border border-slate-800 shadow-xs cursor-pointer"
-            >
-              <Tv className="w-4 h-4 shrink-0 text-amber-400" />
-              <span>Painel de Chamada TV</span>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentView('tv')}
+                className="flex-1 flex items-center justify-start gap-2 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-3 py-2.5 rounded-l-xl text-xs transition border border-slate-800 shadow-xs cursor-pointer"
+                title="Abrir Painel de TV nesta aba"
+              >
+                <Tv className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>Painel TV</span>
+              </button>
+              <a
+                href="/tv"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2.5 bg-slate-950 hover:bg-slate-900 text-amber-400 rounded-r-xl border border-l-0 border-slate-800 transition"
+                title="Abrir TV em nova aba para colocar na Smart TV"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
 
             <button
               onClick={() => setCurrentView('store')}
@@ -303,6 +319,7 @@ export const AdminPanel: React.FC = () => {
           {activeTab === 'franchisees' && <FranchiseesManager />}
           {activeTab === 'products' && <ProductsManager />}
           {activeTab === 'categories' && <CategoriesManager />}
+          {activeTab === 'bluefocus' && <BlueFocusManager />}
           {activeTab === 'settings' && <SettingsManager />}
         </main>
       </div>

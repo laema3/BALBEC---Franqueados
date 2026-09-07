@@ -14,11 +14,17 @@ import {
   Send,
   Eye,
   X,
+  Tv,
+  Volume2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Order, OrderStatus, PaymentMethod } from '../../types.js';
 import { formatCurrency, formatDate } from '../../utils/formatters.js';
+import { useApp } from '../../context/AppContext.js';
 
 export const OrdersManager: React.FC = () => {
+  const { getTvUrl } = useApp();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -57,6 +63,30 @@ export const OrdersManager: React.FC = () => {
     const interval = setInterval(fetchOrders, 8000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleQuickMarkReady = async (order: Order) => {
+    try {
+      setActionLoading(true);
+      const res = await fetch(`/api/orders/${order.id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newStatus: 'PRONTO PARA RETIRADA',
+          responsibleUser: 'Administrador BALBEC',
+          notes: 'Pedido finalizado na cozinha e enviado à TV com aviso sonoro.',
+        }),
+      });
+      if (res.ok) {
+        setToastMessage(`Pedido #${order.orderNumber} marcado como PRONTO! O aviso sonoro foi disparado na TV.`);
+        setTimeout(() => setToastMessage(null), 4000);
+        fetchOrders();
+      }
+    } catch (err) {
+      console.error('Erro ao marcar como pronto:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const handleOpenStatusModal = (order: Order) => {
     setSelectedOrder(order);
@@ -152,6 +182,55 @@ export const OrdersManager: React.FC = () => {
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           <span>Atualizar Pedidos</span>
         </button>
+      </div>
+
+      {/* TV Panel Direct Link & Sound Alert Live Banner */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-950 text-white p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 bg-amber-500 rounded-2xl flex items-center justify-center text-slate-950 shrink-0 font-black shadow-lg ring-2 ring-amber-400">
+            <Tv className="w-6 h-6 text-slate-950" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black text-amber-400 uppercase tracking-wide">
+                Painel Separado para a TV de Retirada
+              </h3>
+              <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                {orders.filter((o) => o.orderStatus === 'PRONTO PARA RETIRADA').length} Pronto(s) na TV
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5 max-w-2xl">
+              URL exclusiva para abrir no navegador da Smart TV da loja. O painel fica conectado o tempo todo com aviso sonoro (sino + voz) disparado sempre que você marcar um pedido como <strong>"PRONTO PARA RETIRADA"</strong>.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(getTvUrl());
+              setToastMessage('Link permanente da TV copiado para a área de transferência!');
+              setTimeout(() => setToastMessage(null), 3000);
+            }}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
+            title="Copiar URL para a TV"
+          >
+            <Copy className="w-3.5 h-3.5 text-amber-400" />
+            <span>Copiar Link TV</span>
+          </button>
+
+          <a
+            href="/tv"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black transition shadow-sm cursor-pointer"
+            title="Abrir TV em uma nova janela ou aba"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Abrir TV em Nova Aba</span>
+          </a>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -280,10 +359,34 @@ export const OrdersManager: React.FC = () => {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {(order.orderStatus === 'RECEBIDO' || order.orderStatus === 'PREPARANDO') && (
+                        <button
+                          onClick={() => handleQuickMarkReady(order)}
+                          disabled={actionLoading}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-2.5 py-1.5 rounded-xl text-xs transition shadow-xs flex items-center gap-1 cursor-pointer"
+                          title="Marcar como Pronto e disparar aviso sonoro imediatamente no Painel da TV"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                          <span>Chamar TV</span>
+                        </button>
+                      )}
+
+                      {order.orderStatus === 'PRONTO PARA RETIRADA' && (
+                        <button
+                          onClick={() => handleQuickMarkReady(order)}
+                          disabled={actionLoading}
+                          className="bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold px-2 py-1.5 rounded-xl text-[11px] transition border border-slate-700 flex items-center gap-1 cursor-pointer"
+                          title="Repetir o aviso sonoro e chamada na TV"
+                        >
+                          <Volume2 className="w-3 h-3" />
+                          <span>Tocar TV Novamente</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={() => handleOpenStatusModal(order)}
-                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-xs transition shadow-xs"
+                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-xs transition shadow-xs cursor-pointer"
                       >
                         Alterar Status
                       </button>

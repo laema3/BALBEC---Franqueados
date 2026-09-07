@@ -630,20 +630,127 @@ apiRouter.get('/ntfy/logs', (req: Request, res: Response) => {
   return res.json(notificationService.getLogs());
 });
 
+// --------------------------------------------------------------------------
+// BLUEFOCUS WEBSERVICES API (Valim Software Integration)
+// --------------------------------------------------------------------------
 apiRouter.get('/bluefocus/status', async (req: Request, res: Response) => {
   const status = await blueFocusService.testConnection();
+  const orders = db.getOrders();
+  const pendingOrdersCount = orders.filter((o) => !o.blueFocusSynced && o.orderStatus !== 'CANCELADO').length;
   return res.json({
     ...status,
     config: blueFocusService.getConfig(),
-    logs: blueFocusService.getLogs().slice(0, 10),
+    pendingOrdersCount,
+    logs: blueFocusService.getLogs().slice(0, 15),
   });
 });
 
-apiRouter.post('/bluefocus/test-sync', async (req: Request, res: Response) => {
-  const orders = db.getOrders();
-  if (orders.length === 0) {
-    return res.status(400).json({ error: 'Nenhum pedido disponível para sincronizar com o BlueFocus.' });
-  }
-  const result = await blueFocusService.syncOrder(orders[0]);
+apiRouter.get('/bluefocus/config', (req: Request, res: Response) => {
+  return res.json(blueFocusService.getConfig());
+});
+
+apiRouter.put('/bluefocus/config', (req: Request, res: Response) => {
+  const current = db.getSettings();
+  const updatedSettings = db.updateSettings({
+    blueFocus: {
+      ...current.blueFocus,
+      ...req.body,
+    },
+  });
+  return res.json({
+    success: true,
+    config: updatedSettings.blueFocus,
+    message: 'Configurações de integração BlueFocus salvas com sucesso.',
+  });
+});
+
+apiRouter.post('/bluefocus/test-connection', async (req: Request, res: Response) => {
+  const result = await blueFocusService.testConnection();
   return res.json(result);
+});
+
+apiRouter.post('/bluefocus/import-products', async (req: Request, res: Response) => {
+  const { tipoAtualizacao, startProdutoId } = req.body || {};
+  const result = await blueFocusService.importProducts({
+    tipoAtualizacao,
+    startProdutoId: Number(startProdutoId) || 0,
+  });
+  return res.json(result);
+});
+
+apiRouter.post('/bluefocus/query-stock', async (req: Request, res: Response) => {
+  const { productIds } = req.body || {};
+  let targetProducts;
+  if (Array.isArray(productIds) && productIds.length > 0) {
+    targetProducts = db.getProducts().filter((p) => productIds.includes(p.id));
+  }
+  const result = await blueFocusService.queryStock(targetProducts);
+  return res.json(result);
+});
+
+apiRouter.post('/bluefocus/export-order/:orderId', async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+  const order = db.getOrderById(orderId);
+  if (!order) {
+    return res.status(404).json({ error: 'Pedido não encontrado.' });
+  }
+  const result = await blueFocusService.syncOrder(order);
+  return res.json(result);
+});
+
+apiRouter.post('/bluefocus/export-all-pending', async (req: Request, res: Response) => {
+  const result = await blueFocusService.exportAllPendingOrders();
+  return res.json(result);
+});
+
+apiRouter.get('/bluefocus/image-urls/:productId', (req: Request, res: Response) => {
+  const { productId } = req.params;
+  const urls = blueFocusService.generateProductImageUrls(productId);
+  return res.json(urls);
+});
+
+apiRouter.get('/bluefocus/preview-xml/:type', (req: Request, res: Response) => {
+  const { type } = req.params;
+  const config = blueFocusService.getConfig();
+
+  if (type === 'import') {
+    const xml = blueFocusService.generateExportaCadSatXml({
+      empresaId: config.empresaId,
+      usuarioId: config.usuarioId,
+      pdvCodigo: config.pdvCodigo,
+      tipoAtualizacao: config.defaultUpdateType || 'C',
+      produtoId: 0,
+    });
+    return res.json({ type: 'import', xml });
+  }
+
+  if (type === 'stock') {
+    const prods = db.getProducts().slice(0, 3);
+    const xml = blueFocusService.generateConsultaQtdeXml({
+      empresaId: config.empresaId,
+      usuarioId: config.usuarioId,
+      pdvCodigo: config.pdvCodigo,
+      items: prods.map((p, i) => ({ produtoId: i + 1, codigoBarras: p.internalCode || String(i + 1) })),
+    });
+    return res.json({ type: 'stock', xml });
+  }
+
+  if (type === 'order') {
+    const orders = db.getOrders();
+    const order = orders[0];
+    if (!order) return res.status(404).json({ error: 'Nenhum pedido encontrado.' });
+    const xml = blueFocusService.generateRegPreVendaXml(order, config);
+    return res.json({ type: 'order', xml, orderNumber: order.orderNumber });
+  }
+
+  return res.status(400).json({ error: 'Tipo de pré-visualização XML desconhecido.' });
+});
+
+apiRouter.get('/bluefocus/logs', (req: Request, res: Response) => {
+  return res.json(blueFocusService.getLogs());
+});
+
+apiRouter.delete('/bluefocus/logs', (req: Request, res: Response) => {
+  blueFocusService.clearLogs();
+  return res.json({ success: true, message: 'Logs de integração BlueFocus limpos com sucesso.' });
 });

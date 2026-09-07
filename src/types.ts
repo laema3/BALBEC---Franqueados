@@ -154,11 +154,23 @@ export interface CompanySettings {
     enabled: boolean;
   };
   blueFocus: {
-    apiUrl: string;
-    apiKey: string;
+    apiUrl?: string;
+    apiKey?: string;
     enabled: boolean;
     syncMode: 'manual' | 'automatic';
     lastSyncAt?: string;
+    // BlueFocus WebServices official fields
+    autentica: string;
+    empresaId: string;
+    usuarioId: string;
+    pdvCodigo: number;
+    serverEnvironment: 'cloud' | 'local';
+    localServerUrl: string;
+    importProductsUrl: string;
+    queryStockUrl: string;
+    exportSalesUrl: string;
+    defaultUpdateType: 'C' | 'A';
+    autoExportOrders: boolean;
   };
   tvPanel: {
     alertSoundEnabled: boolean;

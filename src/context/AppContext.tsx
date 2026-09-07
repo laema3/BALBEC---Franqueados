@@ -9,7 +9,26 @@ interface AppContextType {
   setCurrentView: (view: 'store' | 'admin' | 'tv' | 'orders') => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
+  getTvUrl: () => string;
 }
+
+const parseViewFromLocation = (): 'store' | 'admin' | 'tv' | 'orders' => {
+  if (typeof window === 'undefined') return 'store';
+  const path = window.location.pathname.toLowerCase();
+  const search = new URLSearchParams(window.location.search);
+  const hash = window.location.hash.toLowerCase();
+
+  if (path === '/tv' || path.startsWith('/tv/') || search.get('view') === 'tv' || hash === '#/tv' || hash === '#tv') {
+    return 'tv';
+  }
+  if (path === '/admin' || path.startsWith('/admin/') || search.get('view') === 'admin' || hash === '#/admin' || hash === '#admin') {
+    return 'admin';
+  }
+  if (path === '/orders' || path.startsWith('/orders/') || search.get('view') === 'orders' || hash === '#/orders') {
+    return 'orders';
+  }
+  return 'store';
+};
 
 const defaultSettings: CompanySettings = {
   companyName: 'BALBEC Salgados',
@@ -38,10 +57,21 @@ const defaultSettings: CompanySettings = {
     enabled: true,
   },
   blueFocus: {
-    apiUrl: 'http://localhost:8080/api/bluefocus',
-    apiKey: '',
-    enabled: false,
-    syncMode: 'manual',
+    apiUrl: 'https://www.app.bluefocus.com.br/BlueFocusCloud',
+    apiKey: 'c89f2aab-5aa6-451d-8da8-06709422d3da',
+    enabled: true,
+    syncMode: 'automatic',
+    autentica: 'c89f2aab-5aa6-451d-8da8-06709422d3da',
+    empresaId: 'EMPRESATESTE',
+    usuarioId: 'CAIXA',
+    pdvCodigo: 2,
+    serverEnvironment: 'cloud',
+    localServerUrl: 'http://localhost:8082',
+    importProductsUrl: 'https://www.app.bluefocus.com.br/BlueFocusCloud/servlet/aintegracaofcxexportacadsat?wsdl',
+    queryStockUrl: 'https://www.app.bluefocus.com.br/BlueFocusCloud/aintegracaofcxconsultaqtde?wsdl',
+    exportSalesUrl: 'https://www.app.bluefocus.com.br/BlueFocusCloud/servlet/aintegracaofcxregprevendasat?wsdl',
+    defaultUpdateType: 'C',
+    autoExportOrders: true,
   },
   tvPanel: {
     alertSoundEnabled: true,
@@ -55,8 +85,37 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<CompanySettings | null>(defaultSettings);
   const [loadingSettings, setLoadingSettings] = useState<boolean>(false);
-  const [currentView, setCurrentView] = useState<'store' | 'admin' | 'tv' | 'orders'>('store');
+  const [currentView, setCurrentViewState] = useState<'store' | 'admin' | 'tv' | 'orders'>(() => parseViewFromLocation());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const setCurrentView = (view: 'store' | 'admin' | 'tv' | 'orders') => {
+    setCurrentViewState(view);
+    if (typeof window !== 'undefined') {
+      let targetPath = '/';
+      if (view === 'tv') targetPath = '/tv';
+      else if (view === 'admin') targetPath = '/admin';
+      else if (view === 'orders') targetPath = '/orders';
+
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({ view }, '', targetPath);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentViewState(parseViewFromLocation());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const getTvUrl = (): string => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/tv`;
+    }
+    return '/tv';
+  };
 
   const refreshSettings = async () => {
     try {
@@ -94,6 +153,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentView,
         toastMessage,
         showToast,
+        getTvUrl,
       }}
     >
       {children}

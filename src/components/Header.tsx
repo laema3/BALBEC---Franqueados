@@ -13,6 +13,7 @@ import {
   HelpCircle,
   Sparkles,
   PhoneCall,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { useCart } from '../context/CartContext.js';
@@ -219,20 +220,31 @@ export const Header: React.FC = () => {
           )}
 
           {/* TV Withdrawal Board button */}
-          <button
-            id="nav-btn-tv"
-            onClick={() => setCurrentView('tv')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-bold text-xs sm:text-sm transition shadow-sm ${
-              currentView === 'tv'
-                ? 'bg-slate-900 text-white ring-2 ring-slate-900'
-                : 'bg-amber-600 hover:bg-amber-700 text-white'
-            }`}
-            title="Abrir painel de chamada na TV para pedidos prontos"
-          >
-            <Tv className="w-4 h-4" />
-            <span className="hidden md:inline">Painel TV</span>
-            <span className="md:hidden">TV</span>
-          </button>
+          <div className="flex items-center">
+            <button
+              id="nav-btn-tv"
+              onClick={() => setCurrentView('tv')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-l-lg font-bold text-xs sm:text-sm transition shadow-sm ${
+                currentView === 'tv'
+                  ? 'bg-slate-900 text-white ring-2 ring-slate-900'
+                  : 'bg-amber-600 hover:bg-amber-700 text-white'
+              }`}
+              title="Abrir painel de retirada na TV"
+            >
+              <Tv className="w-4 h-4" />
+              <span className="hidden md:inline">Painel TV</span>
+              <span className="md:hidden">TV</span>
+            </button>
+            <a
+              href="/tv"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-amber-700 hover:bg-amber-800 text-amber-100 hover:text-white p-2 rounded-r-lg border-l border-amber-600/60 transition shadow-sm"
+              title="Abrir Painel da TV em nova aba para Smart TV"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
 
           {/* Cart Trigger with prominent RED badge and goal indicator */}
           {currentView === 'store' && (

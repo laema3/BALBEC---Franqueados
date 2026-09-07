@@ -56,10 +56,21 @@ const initialSettings: CompanySettings = {
     enabled: true,
   },
   blueFocus: {
-    apiUrl: process.env.BLUEFOCUS_API_URL || 'http://localhost:8080/api/bluefocus',
-    apiKey: process.env.BLUEFOCUS_API_KEY || '',
-    enabled: false,
-    syncMode: 'manual',
+    apiUrl: process.env.BLUEFOCUS_API_URL || 'https://www.app.bluefocus.com.br/BlueFocusCloud',
+    apiKey: process.env.BLUEFOCUS_API_KEY || 'c89f2aab-5aa6-451d-8da8-06709422d3da',
+    enabled: true,
+    syncMode: 'automatic',
+    autentica: 'c89f2aab-5aa6-451d-8da8-06709422d3da',
+    empresaId: 'EMPRESATESTE',
+    usuarioId: 'CAIXA',
+    pdvCodigo: 2,
+    serverEnvironment: 'cloud',
+    localServerUrl: 'http://localhost:8082',
+    importProductsUrl: 'https://www.app.bluefocus.com.br/BlueFocusCloud/servlet/aintegracaofcxexportacadsat?wsdl',
+    queryStockUrl: 'https://www.app.bluefocus.com.br/BlueFocusCloud/aintegracaofcxconsultaqtde?wsdl',
+    exportSalesUrl: 'https://www.app.bluefocus.com.br/BlueFocusCloud/servlet/aintegracaofcxregprevendasat?wsdl',
+    defaultUpdateType: 'C',
+    autoExportOrders: true,
   },
   tvPanel: {
     alertSoundEnabled: true,
@@ -586,6 +597,12 @@ class DatabaseService {
       if (fs.existsSync(DATA_FILE)) {
         const raw = fs.readFileSync(DATA_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
+        if (parsed.settings) {
+          parsed.settings.blueFocus = {
+            ...initialSettings.blueFocus,
+            ...(parsed.settings.blueFocus || {}),
+          };
+        }
         return parsed;
       }
     } catch (err) {

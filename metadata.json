@@ -1,0 +1,6 @@
+{
+  "name": "BALBEC - Sistema de Pedidos",
+  "description": "Sistema de pedidos online para franqueados da lanchonete BALBEC com painel administrativo, compras e painel de TV.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

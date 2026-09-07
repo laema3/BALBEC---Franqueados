@@ -15,6 +15,7 @@ import { OrdersHistoryModal } from './components/franchisee/OrdersHistoryModal.j
 import { AdminPanel } from './components/admin/AdminPanel.js';
 import { TvPanel } from './components/tv/TvPanel.js';
 import { LoginModal } from './components/auth/LoginModal.js';
+import { ErrorBoundary } from './components/common/ErrorBoundary.js';
 import { Phone, Mail, MapPin, Bell, Cpu, ExternalLink, Settings } from 'lucide-react';
 
 const MainContent: React.FC = () => {
@@ -39,9 +40,11 @@ const MainContent: React.FC = () => {
 
       {/* View Switcher: Store vs Orders vs Admin */}
       <main className="flex-1">
-        {currentView === 'store' && <FranchiseeStore />}
-        {currentView === 'orders' && <OrdersHistoryModal />}
-        {currentView === 'admin' && <AdminPanel />}
+        <ErrorBoundary fallbackTitle="Falha na exibição da tela">
+          {currentView === 'store' && <FranchiseeStore />}
+          {currentView === 'orders' && <OrdersHistoryModal />}
+          {currentView === 'admin' && <AdminPanel />}
+        </ErrorBoundary>
       </main>
 
       {/* Persistent Modals & Drawers */}

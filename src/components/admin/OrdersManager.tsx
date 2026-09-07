@@ -345,7 +345,7 @@ export const OrdersManager: React.FC = () => {
                       onClick={() => handleSyncBlueFocus(order.id)}
                       disabled={syncingBlueFocus === order.id}
                       className={`text-[11px] font-bold px-2 py-1 rounded-lg border transition ${
-                        order.blueFocusSync?.synced
+                        order.blueFocusSynced || order.blueFocusSync?.synced
                           ? 'bg-blue-50 border-blue-200 text-blue-700'
                           : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                       }`}
@@ -353,7 +353,7 @@ export const OrdersManager: React.FC = () => {
                     >
                       {syncingBlueFocus === order.id
                         ? 'Sincronizando...'
-                        : order.blueFocusSync?.synced
+                        : order.blueFocusSynced || order.blueFocusSync?.synced
                         ? '✓ Sincronizado'
                         : 'Sincronizar ERP'}
                     </button>

@@ -132,6 +132,11 @@ export interface Order {
   ntfyTopic?: string;
   blueFocusSynced: boolean;
   blueFocusSyncError?: string;
+  blueFocusSync?: {
+    synced: boolean;
+    syncedAt?: string;
+    error?: string;
+  };
 }
 
 export interface CompanySettings {

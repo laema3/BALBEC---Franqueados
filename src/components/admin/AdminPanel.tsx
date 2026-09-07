@@ -28,6 +28,7 @@ import { CategoriesManager } from './CategoriesManager.js';
 import { ProductsManager } from './ProductsManager.js';
 import { SettingsManager } from './SettingsManager.js';
 import { BlueFocusManager } from './BlueFocusManager.js';
+import { ErrorBoundary } from '../common/ErrorBoundary.js';
 import { useApp } from '../../context/AppContext.js';
 import { useAuth } from '../../context/AuthContext.js';
 
@@ -314,13 +315,15 @@ export const AdminPanel: React.FC = () => {
 
         {/* Right Main Content Stage */}
         <main className="flex-1 min-w-0 w-full">
-          {activeTab === 'dashboard' && <AdminDashboard onNavigateToOrders={() => setActiveTab('orders')} />}
-          {activeTab === 'orders' && <OrdersManager />}
-          {activeTab === 'franchisees' && <FranchiseesManager />}
-          {activeTab === 'products' && <ProductsManager />}
-          {activeTab === 'categories' && <CategoriesManager />}
-          {activeTab === 'bluefocus' && <BlueFocusManager />}
-          {activeTab === 'settings' && <SettingsManager />}
+          <ErrorBoundary fallbackTitle="Falha ao carregar seção administrativa">
+            {activeTab === 'dashboard' && <AdminDashboard onNavigateToOrders={() => setActiveTab('orders')} />}
+            {activeTab === 'orders' && <OrdersManager />}
+            {activeTab === 'franchisees' && <FranchiseesManager />}
+            {activeTab === 'products' && <ProductsManager />}
+            {activeTab === 'categories' && <CategoriesManager />}
+            {activeTab === 'bluefocus' && <BlueFocusManager />}
+            {activeTab === 'settings' && <SettingsManager />}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

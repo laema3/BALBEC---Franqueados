@@ -139,6 +139,25 @@ export interface Order {
   };
 }
 
+export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+export interface DaySchedule {
+  day: DayOfWeek;
+  dayLabel: string;
+  isOpen: boolean;
+  openTime: string;  // Ex: "08:00"
+  closeTime: string; // Ex: "18:00"
+}
+
+export interface StoreScheduleSettings {
+  enabled: boolean;
+  manualOverride: 'auto' | 'force_open' | 'force_closed';
+  forceReason?: string;
+  closedMessage: string;
+  blockOrdersWhenClosed: boolean;
+  days: DaySchedule[];
+}
+
 export interface CompanySettings {
   companyName: string;
   logoUrl: string;
@@ -163,7 +182,9 @@ export interface CompanySettings {
     apiKey?: string;
     enabled: boolean;
     syncMode: 'manual' | 'automatic';
+    autoSyncEvery2Hours?: boolean;
     lastSyncAt?: string;
+    nextSyncAt?: string;
     // BlueFocus WebServices official fields
     autentica: string;
     empresaId: string;
@@ -177,6 +198,7 @@ export interface CompanySettings {
     defaultUpdateType: 'C' | 'A';
     autoExportOrders: boolean;
   };
+  storeSchedule?: StoreScheduleSettings;
   tvPanel: {
     alertSoundEnabled: boolean;
     autoDismissMinutes: number;

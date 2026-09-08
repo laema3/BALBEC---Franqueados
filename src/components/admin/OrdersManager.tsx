@@ -18,15 +18,30 @@ import {
   Volume2,
   Copy,
   Check,
+  Trash2,
+  Printer,
 } from 'lucide-react';
 import { Order, OrderStatus, PaymentMethod } from '../../types.js';
 import { formatCurrency, formatDate } from '../../utils/formatters.js';
 import { useApp } from '../../context/AppContext.js';
+import { playNewOrderSound } from '../../utils/sound.js';
+import { printOrderReceipt } from '../../utils/printReceipt.js';
 
 export const OrdersManager: React.FC = () => {
   const { getTvUrl } = useApp();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Play sound when new orders arrive
+  const prevCountRef = React.useRef<number>(0);
+  useEffect(() => {
+    if (orders.length > 0) {
+      if (prevCountRef.current > 0 && orders.length > prevCountRef.current) {
+        playNewOrderSound();
+      }
+      prevCountRef.current = orders.length;
+    }
+  }, [orders]);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -42,6 +57,27 @@ export const OrdersManager: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [syncingBlueFocus, setSyncingBlueFocus] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    try {
+      setActionLoading(true);
+      const res = await fetch(`/api/orders/${orderToDelete.id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setToastMessage(`Pedido #${orderToDelete.orderNumber} excluído com sucesso.`);
+        setTimeout(() => setToastMessage(null), 4000);
+        setOrderToDelete(null);
+        fetchOrders();
+      }
+    } catch (err) {
+      console.error('Erro ao excluir pedido:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -385,10 +421,26 @@ export const OrdersManager: React.FC = () => {
                       )}
 
                       <button
+                        onClick={() => printOrderReceipt(order, order.franchiseeName.startsWith('TOTEM') ? 'totem' : 'online')}
+                        className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                        title="Imprimir Comprovante Térmico (2 vias: Cliente + Cozinha)"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
+
+                      <button
                         onClick={() => handleOpenStatusModal(order)}
                         className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-xs transition shadow-xs cursor-pointer"
                       >
                         Alterar Status
+                      </button>
+
+                      <button
+                        onClick={() => setOrderToDelete(order)}
+                        className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition cursor-pointer"
+                        title="Excluir pedido"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -546,6 +598,43 @@ export const OrdersManager: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMATION MODAL: DELETE ORDER */}
+      {orderToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mb-4">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 mb-1">
+                Excluir Pedido #{orderToDelete.orderNumber}?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                Tem certeza que deseja excluir permanentemente o pedido de <span className="font-bold text-slate-900">{orderToDelete.franchiseeName}</span> no valor de <span className="font-bold text-slate-900">{formatCurrency(orderToDelete.total)}</span>? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOrderToDelete(null)}
+                  disabled={actionLoading}
+                  className="px-4 py-2.5 rounded-xl font-bold text-xs text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteOrder}
+                  disabled={actionLoading}
+                  className="bg-red-600 hover:bg-red-700 text-white font-black text-xs px-5 py-2.5 rounded-xl transition shadow cursor-pointer disabled:opacity-50"
+                >
+                  {actionLoading ? 'Excluindo...' : 'Sim, Excluir Pedido'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

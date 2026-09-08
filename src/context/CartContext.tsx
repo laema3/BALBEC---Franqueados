@@ -37,37 +37,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (saved) {
         setItems(JSON.parse(saved));
       } else {
-        // Prepopulate with a couple of items to demonstrate the minimum goal tracker right away
-        setItems([
-          {
-            product: {
-              id: 'prod-1',
-              name: 'Coxinha Especial de Frango c/ Catupiry (100g)',
-              description: 'Massa de batata crocante recheada com peito de frango desfiado temperado e requeijão Catupiry original.',
-              categoryId: 'cat-1',
-              price: 6.50,
-              imageUrl: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80',
-              internalCode: 'SLG-101',
-              status: 'active',
-              createdAt: new Date().toISOString(),
-            },
-            quantity: 50,
-          },
-          {
-            product: {
-              id: 'prod-5',
-              name: 'Esfiha Fechada de Carne Temperada (120g)',
-              description: 'Massa folhada macia recheada com carne moída, cebola, tomate e especiarias sírias.',
-              categoryId: 'cat-2',
-              price: 7.00,
-              imageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&auto=format&fit=crop&q=80',
-              internalCode: 'ASD-201',
-              status: 'active',
-              createdAt: new Date().toISOString(),
-            },
-            quantity: 15,
-          },
-        ]);
+        setItems([]);
       }
     } catch {
       // fallback

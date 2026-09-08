@@ -261,6 +261,22 @@ apiRouter.put('/categories/:id', (req: Request, res: Response) => {
   return res.json(updated);
 });
 
+apiRouter.patch('/categories/:id/status', (req: Request, res: Response) => {
+  const { status } = req.body;
+  if (status !== 'active' && status !== 'inactive') {
+    return res.status(400).json({ error: 'Status deve ser "active" ou "inactive".' });
+  }
+  const updated = db.updateCategory(req.params.id, { status });
+  if (!updated) {
+    return res.status(404).json({ error: 'Categoria não encontrada.' });
+  }
+  return res.json({
+    success: true,
+    category: updated,
+    message: `Categoria ${status === 'active' ? 'ativada' : 'inativada'} com sucesso.`,
+  });
+});
+
 apiRouter.delete('/categories/:id', (req: Request, res: Response) => {
   const success = db.deleteCategory(req.params.id);
   if (!success) {
@@ -303,7 +319,7 @@ apiRouter.post('/products', (req: Request, res: Response) => {
     description: data.description || '',
     categoryId: data.categoryId,
     price: Number(data.price),
-    imageUrl: data.imageUrl || 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80',
+    imageUrl: data.imageUrl || '',
     internalCode: data.internalCode || `PRD-${Date.now().toString().slice(-4)}`,
     status: data.status || 'active',
   });
@@ -319,12 +335,41 @@ apiRouter.put('/products/:id', (req: Request, res: Response) => {
   return res.json(updated);
 });
 
+apiRouter.post('/products/bulk-category', (req: Request, res: Response) => {
+  const { productIds, categoryId } = req.body;
+  if (!Array.isArray(productIds) || !categoryId) {
+    return res.status(400).json({ error: 'Lista de IDs de produtos e ID da categoria são obrigatórios.' });
+  }
+  const count = db.bulkUpdateCategory(productIds, categoryId);
+  return res.json({ success: true, count, message: `${count} produto(s) associado(s) à categoria com sucesso!` });
+});
+
+apiRouter.delete('/products/clear-all', (req: Request, res: Response) => {
+  const count = db.deleteAllProducts();
+  return res.json({ success: true, count, message: `Todos os ${count} produtos foram removidos com sucesso.` });
+});
+
+apiRouter.post('/products/clear-all', (req: Request, res: Response) => {
+  const count = db.deleteAllProducts();
+  return res.json({ success: true, count, message: `Todos os ${count} produtos foram removidos com sucesso.` });
+});
+
+apiRouter.post('/products/restore-demo', (req: Request, res: Response) => {
+  const count = db.restoreDefaultProducts();
+  return res.json({ success: true, count, message: `${count} produtos padrão de demonstração foram restaurados.` });
+});
+
 apiRouter.delete('/products/:id', (req: Request, res: Response) => {
-  const success = db.deleteProduct(req.params.id);
+  const { id } = req.params;
+  if (id === 'clear-all' || id === 'all') {
+    const count = db.deleteAllProducts();
+    return res.json({ success: true, count, message: `Todos os ${count} produtos foram removidos com sucesso.` });
+  }
+  const success = db.deleteProduct(id);
   if (!success) {
     return res.status(404).json({ error: 'Produto não encontrado.' });
   }
-  return res.json({ success: true, message: 'Produto excluído logicamente.' });
+  return res.json({ success: true, message: 'Produto excluído com sucesso.' });
 });
 
 // --------------------------------------------------------------------------
@@ -377,15 +422,79 @@ apiRouter.post('/orders', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'O carrinho está vazio ou franqueado não informado.' });
     }
 
-    const franchisee = db.getFranchiseeById(franchiseeId);
+    const isTotem = franchiseeId === 'totem-kiosk';
+    const franchisee = isTotem
+      ? {
+          id: 'totem-kiosk',
+          tradeName: req.body.franchiseeName || 'TOTEM KIOSK',
+          companyName: 'TOTEM KIOSK',
+          document: req.body.franchiseeDocument || '000.000.000-00',
+          phone: req.body.franchiseePhone || '',
+          whatsapp: req.body.franchiseePhone || '',
+          status: 'active',
+          minimumOrderValue: 0,
+        }
+      : db.getFranchiseeById(franchiseeId);
+
     if (!franchisee) {
       return res.status(404).json({ error: 'Cadastro do franqueado não encontrado.' });
     }
 
-    if (franchisee.status !== 'active') {
+    if (!isTotem && franchisee.status !== 'active') {
       return res.status(403).json({
         error: 'Sua conta não está ativa para realizar novos pedidos. Entre em contato com a BALBEC.',
       });
+    }
+
+    // Check Store Operating Hours (bypassed for totem)
+    const settings = db.getSettings();
+    if (!isTotem && settings.storeSchedule?.enabled && settings.storeSchedule?.blockOrdersWhenClosed) {
+      const schedule = settings.storeSchedule;
+      const now = new Date();
+      let isOpen = true;
+      let reason = schedule.closedMessage || 'A loja de fábrica está fechada fora do horário de atendimento.';
+
+      if (schedule.manualOverride === 'force_closed') {
+        isOpen = false;
+        if (schedule.forceReason) reason = schedule.forceReason;
+      } else if (schedule.manualOverride === 'force_open') {
+        isOpen = true;
+      } else {
+        const dayMap: Record<number, string> = {
+          0: 'sunday',
+          1: 'monday',
+          2: 'tuesday',
+          3: 'wednesday',
+          4: 'thursday',
+          5: 'friday',
+          6: 'saturday',
+        };
+        const currentDayKey = dayMap[now.getDay()];
+        const todaySchedule = schedule.days?.find((d) => d.day === currentDayKey);
+        if (!todaySchedule || !todaySchedule.isOpen) {
+          isOpen = false;
+        } else {
+          const currentHour = now.getHours();
+          const currentMinute = now.getMinutes();
+          const currentTimeMin = currentHour * 60 + currentMinute;
+
+          const [openH, openM] = (todaySchedule.openTime || '08:00').split(':').map(Number);
+          const [closeH, closeM] = (todaySchedule.closeTime || '18:00').split(':').map(Number);
+          const openMin = openH * 60 + openM;
+          const closeMin = closeH * 60 + closeM;
+
+          if (currentTimeMin < openMin || currentTimeMin >= closeMin) {
+            isOpen = false;
+          }
+        }
+      }
+
+      if (!isOpen) {
+        return res.status(403).json({
+          error: `Loja fechada no momento. ${reason}`,
+          storeClosed: true,
+        });
+      }
     }
 
     // Build order items & calculate subtotal from active database prices
@@ -413,9 +522,9 @@ apiRouter.post('/orders', async (req: Request, res: Response) => {
       });
     }
 
-    // ENFORCE MINIMUM ORDER VALUE RULE (Section 5 & 28)
-    const minimumRequired = franchisee.minimumOrderValue || 300;
-    if (subtotal < minimumRequired) {
+    // ENFORCE MINIMUM ORDER VALUE RULE (Section 5 & 28) - bypassed for totem
+    const minimumRequired = isTotem ? 0 : (franchisee.minimumOrderValue || 300);
+    if (!isTotem && subtotal < minimumRequired) {
       const remaining = minimumRequired - subtotal;
       return res.status(400).json({
         error: `O valor mínimo para realizar o pedido é R$ ${minimumRequired.toFixed(2)}. Faltam R$ ${remaining.toFixed(2)} para atingir a sua meta de compra.`,
@@ -525,6 +634,15 @@ apiRouter.put('/orders/:id/status', async (req: Request, res: Response) => {
     order: updated,
     message: `Status do pedido #${updated.orderNumber} atualizado para "${newStatus}". Notificação disparada.`,
   });
+});
+
+apiRouter.delete('/orders/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const success = db.deleteOrder(id);
+  if (!success) {
+    return res.status(404).json({ error: 'Pedido não encontrado.' });
+  }
+  return res.json({ success: true, message: 'Pedido excluído com sucesso.' });
 });
 
 // --------------------------------------------------------------------------
@@ -701,6 +819,32 @@ apiRouter.post('/bluefocus/export-order/:orderId', async (req: Request, res: Res
 apiRouter.post('/bluefocus/export-all-pending', async (req: Request, res: Response) => {
   const result = await blueFocusService.exportAllPendingOrders();
   return res.json(result);
+});
+
+apiRouter.post('/bluefocus/auto-sync/trigger', async (req: Request, res: Response) => {
+  const result = await blueFocusService.executeFullSync('manual');
+  return res.json(result);
+});
+
+apiRouter.put('/bluefocus/auto-sync/toggle', (req: Request, res: Response) => {
+  const { enabled } = req.body;
+  const current = db.getSettings();
+  const nextSync = enabled ? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString() : undefined;
+  const updated = db.updateSettings({
+    blueFocus: {
+      ...current.blueFocus,
+      autoSyncEvery2Hours: !!enabled,
+      nextSyncAt: nextSync,
+    },
+  });
+  return res.json({
+    success: true,
+    autoSyncEvery2Hours: updated.blueFocus.autoSyncEvery2Hours,
+    nextSyncAt: updated.blueFocus.nextSyncAt,
+    message: enabled
+      ? 'Sincronização automática a cada 2 horas ativada com sucesso.'
+      : 'Sincronização automática a cada 2 horas desativada.',
+  });
 });
 
 apiRouter.get('/bluefocus/image-urls/:productId', (req: Request, res: Response) => {

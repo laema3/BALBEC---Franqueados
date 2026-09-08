@@ -44,6 +44,7 @@ const DEFAULT_BLUEFOCUS_CONFIG: CompanySettings['blueFocus'] = {
   exportSalesUrl: 'https://servidor.bluefocus.net.br/RegPreVendaSAT.asmx?wsdl',
   defaultUpdateType: 'C',
   autoExportOrders: true,
+  autoSyncEvery2Hours: true,
 };
 
 export const BlueFocusManager: React.FC = () => {
@@ -68,6 +69,7 @@ export const BlueFocusManager: React.FC = () => {
   // Status & test connection
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{ connected: boolean; message: string } | null>(null);
 
   // Operations states
@@ -246,6 +248,28 @@ export const BlueFocusManager: React.FC = () => {
       showToast('Falha ao importar produtos do ERP BlueFocus.');
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleTriggerAutoSyncNow = async () => {
+    setIsAutoSyncing(true);
+    try {
+      showToast('Disparando ciclo de sincronização automática de 2 horas...');
+      const res = await fetch('/api/bluefocus/auto-sync/trigger', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'Ciclo de sincronização de 2h finalizado com sucesso!');
+        await refreshSettings();
+        await fetchProducts();
+        await fetchOrders();
+        await loadLogs();
+      } else {
+        showToast(data.message || 'Falha na sincronização.');
+      }
+    } catch {
+      showToast('Erro ao acionar sincronização automática.');
+    } finally {
+      setIsAutoSyncing(false);
     }
   };
 
@@ -764,6 +788,84 @@ export const BlueFocusManager: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, autoExportOrders: e.target.checked })}
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300"
                 />
+              </div>
+
+              {/* Sincronização Automática a cada 2 Horas */}
+              <div className="md:col-span-2 p-4 bg-blue-50/70 rounded-2xl border border-blue-200/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 bg-blue-600 text-white rounded-xl shrink-0 mt-0.5 shadow-xs">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-slate-900">
+                          Sincronização Automática a cada 2 Horas
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            formData.autoSyncEvery2Hours
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {formData.autoSyncEvery2Hours ? 'Ativa (2h)' : 'Desativada'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                        Atualiza automaticamente produtos e saldos do ERP BlueFocus e descarrega pedidos a cada 2 horas em segundo plano.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-500 mt-2 font-medium">
+                        <span>
+                          Última sincronização:{' '}
+                          <strong className="text-slate-800">
+                            {formData.lastSyncAt
+                              ? new Date(formData.lastSyncAt).toLocaleTimeString('pt-BR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'Pendente'}
+                          </strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Próxima sincronização automática:{' '}
+                          <strong className="text-blue-700 font-bold">
+                            {formData.nextSyncAt
+                              ? new Date(formData.nextSyncAt).toLocaleTimeString('pt-BR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'Em ~2 horas'}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={handleTriggerAutoSyncNow}
+                      disabled={isAutoSyncing}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
+                      title="Dispara agora o ciclo de 2 horas e recalcula o próximo agendamento"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isAutoSyncing ? 'animate-spin' : ''}`} />
+                      <span>{isAutoSyncing ? 'Sincronizando...' : 'Executar Ciclo 2h Agora'}</span>
+                    </button>
+
+                    <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-xl border border-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={!!formData.autoSyncEvery2Hours}
+                        onChange={(e) => setFormData({ ...formData, autoSyncEvery2Hours: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300"
+                      />
+                      <span className="text-xs font-bold text-slate-800">Auto 2h</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

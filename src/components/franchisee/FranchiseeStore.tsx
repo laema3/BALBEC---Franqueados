@@ -1,19 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, ShoppingBag, Plus, Minus, Tag, Check, AlertCircle, Lock, ShieldAlert, KeyRound, UserCheck, Sparkles } from 'lucide-react';
+import { Search, ShoppingBag, Plus, Minus, Tag, Check, AlertCircle, Lock, ShieldAlert, KeyRound, UserCheck, Sparkles, Package, Image as ImageIcon, Clock } from 'lucide-react';
 import { Category, Product } from '../../types.js';
 import { useCart } from '../../context/CartContext.js';
 import { useAuth } from '../../context/AuthContext.js';
+import { useApp } from '../../context/AppContext.js';
 import { formatCurrency, maskCpfCnpj } from '../../utils/formatters.js';
+import { checkStoreStatus } from '../../utils/schedule.js';
 
 export const FranchiseeStore: React.FC = () => {
   const { addItem, items, updateQuantity, setIsCartDrawerOpen } = useCart();
   const { franchisee, user, setIsAuthModalOpen, login, setQuickDemoUser } = useAuth();
+  const { settings } = useApp();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
+
+  const storeStatus = checkStoreStatus(settings?.storeSchedule);
 
   // In-page login state for unauthenticated franchisee access
   const [docInput, setDocInput] = useState('');
@@ -272,8 +277,38 @@ export const FranchiseeStore: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Category Pills & Search Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-xs border border-amber-100">
+      {/* Operating Schedule Notice Banner if Store is Closed */}
+      {!storeStatus.isOpen && (
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white p-4 rounded-2xl shadow-sm border border-red-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-white/20 rounded-xl shrink-0 mt-0.5">
+              <Clock className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider bg-white text-red-700 px-2 py-0.5 rounded-full">
+                  Loja Fechada no Momento
+                </span>
+                <span className="text-xs font-semibold text-red-100">
+                  {storeStatus.statusDescription}
+                </span>
+              </div>
+              <p className="text-xs text-red-50 mt-1 leading-relaxed">
+                {settings?.storeSchedule?.closedMessage ||
+                  'Nossa fábrica está fora do horário de atendimento. Você ainda pode consultar o cardápio e os valores dos salgados.'}
+              </p>
+            </div>
+          </div>
+          {settings?.storeSchedule?.blockOrdersWhenClosed && (
+            <span className="text-[11px] font-bold bg-black/30 px-3 py-1.5 rounded-xl border border-white/20 shrink-0 self-end sm:self-center">
+              Envio de pedidos bloqueado
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Category Pills & Search Bar (Sticky on Scroll) */}
+      <div className="sticky top-16 z-30 bg-white/95 backdrop-blur-md shadow-md py-3 px-4 rounded-2xl border border-amber-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         {/* Category horizontal scroll list */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           <button
@@ -342,13 +377,23 @@ export const FranchiseeStore: React.FC = () => {
                 className="bg-white rounded-2xl border border-amber-100/80 shadow-xs hover:shadow-md transition flex flex-col overflow-hidden group"
               >
                 {/* Product Image */}
-                <div className="relative h-48 bg-slate-100 overflow-hidden">
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                    loading="lazy"
-                  />
+                <div className="relative h-48 bg-slate-100 overflow-hidden flex items-center justify-center">
+                  {product.imageUrl ? (
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-50/40 via-slate-50 to-slate-100 text-slate-400 p-4 select-none">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100/80 border border-amber-200/60 flex items-center justify-center mb-2 text-amber-700 shadow-xs">
+                        <Package className="w-6 h-6" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 text-center line-clamp-1 px-2">{product.name}</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5 font-medium">Sem foto</span>
+                    </div>
+                  )}
                   {/* Internal Code Badge */}
                   <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-amber-400 font-mono text-[10px] font-bold px-2 py-0.5 rounded-md">
                     {product.internalCode}

@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  Upload,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext.js';
 import { CompanySettings } from '../../types.js';
@@ -21,6 +23,20 @@ export const SettingsManager: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [testNotificationStatus, setTestNotificationStatus] = useState<string | null>(null);
   const [testBlueFocusStatus, setTestBlueFocusStatus] = useState<string | null>(null);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const result = uploadEvent.target?.result as string;
+      if (result) {
+        setFormData({ ...formData, logoUrl: result });
+        showToast('Logomarca carregada com sucesso! Lembre-se de salvar.');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSaveAll = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,6 +271,37 @@ export const SettingsManager: React.FC = () => {
                 <span className="font-mono font-bold text-slate-700">
                   {formData.visual?.buttonColor || '#DC2626'}
                 </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Logo Upload Section */}
+          <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+            <label className="font-bold text-slate-700 block">Logomarca da Empresa</label>
+            <div className="flex items-center gap-4">
+              {formData.logoUrl ? (
+                <img
+                  src={formData.logoUrl}
+                  alt="Logo"
+                  className="w-14 h-14 rounded-xl object-contain bg-slate-100 border border-slate-200 p-1 shrink-0"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                  <ImageIcon className="w-6 h-6" />
+                </div>
+              )}
+              <div className="flex-1 space-y-1">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-3 py-2 rounded-xl transition shadow-xs">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Enviar Nova Logomarca</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-[10px] text-slate-400">PNG, JPG ou SVG recomendados.</p>
               </div>
             </div>
           </div>

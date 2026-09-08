@@ -20,6 +20,10 @@ import {
   UserCheck,
   Cpu,
   ExternalLink,
+  Clock,
+  Package,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { AdminDashboard } from './AdminDashboard.js';
 import { OrdersManager } from './OrdersManager.js';
@@ -28,17 +32,23 @@ import { CategoriesManager } from './CategoriesManager.js';
 import { ProductsManager } from './ProductsManager.js';
 import { SettingsManager } from './SettingsManager.js';
 import { BlueFocusManager } from './BlueFocusManager.js';
+import { StoreScheduleManager } from './StoreScheduleManager.js';
 import { ErrorBoundary } from '../common/ErrorBoundary.js';
 import { useApp } from '../../context/AppContext.js';
 import { useAuth } from '../../context/AuthContext.js';
+import { checkStoreStatus } from '../../utils/schedule.js';
 
-type AdminTab = 'dashboard' | 'orders' | 'franchisees' | 'categories' | 'products' | 'bluefocus' | 'settings';
+type AdminTab = 'dashboard' | 'orders' | 'franchisees' | 'products' | 'categories' | 'schedule' | 'bluefocus' | 'settings';
 
 export const AdminPanel: React.FC = () => {
-  const { setCurrentView } = useApp();
+  const { setCurrentView, settings } = useApp();
   const { user, franchisee, login, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [productsMenuOpen, setProductsMenuOpen] = useState(true);
+
+  // Real-time store status helper
+  const storeStatus = checkStoreStatus(settings?.storeSchedule);
 
   // Admin Login Gate State
   const [adminUsername, setAdminUsername] = useState('');
@@ -195,20 +205,12 @@ export const AdminPanel: React.FC = () => {
     );
   }
 
-  const menuItems: { id: AdminTab; label: string; icon: React.FC<{ className?: string }> }[] = [
-    { id: 'dashboard', label: 'Dashboard Geral', icon: LayoutDashboard },
-    { id: 'orders', label: 'Pedidos', icon: ClipboardList },
-    { id: 'franchisees', label: 'Franqueados', icon: Users },
-    { id: 'products', label: 'Salgados', icon: Cookie },
-    { id: 'categories', label: 'Categorias', icon: Tags },
-    { id: 'bluefocus', label: 'Integração BlueFocus', icon: Cpu },
-    { id: 'settings', label: 'Configurações', icon: Settings },
-  ];
-
   const handleSelectTab = (tab: AdminTab) => {
     setActiveTab(tab);
     setMobileMenuOpen(false);
   };
+
+  const isProductsActive = activeTab === 'products' || activeTab === 'categories';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -217,7 +219,13 @@ export const AdminPanel: React.FC = () => {
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Menu Admin:</span>
           <span className="text-sm font-black text-slate-900 capitalize">
-            {menuItems.find((m) => m.id === activeTab)?.label}
+            {activeTab === 'products'
+              ? 'Produtos'
+              : activeTab === 'categories'
+              ? 'Categorias'
+              : activeTab === 'schedule'
+              ? 'Dias e Horários'
+              : activeTab}
           </span>
         </div>
         <button
@@ -241,32 +249,140 @@ export const AdminPanel: React.FC = () => {
               Painel Administrativo
             </span>
             <h3 className="text-sm font-black text-slate-900 mt-0.5">Gestão BALBEC</h3>
-            <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold mt-1 bg-emerald-50 px-2 py-0.5 rounded-md">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Sessão Admin Ativa</span>
+            <div className="flex items-center justify-between text-[11px] text-emerald-700 font-bold mt-1 bg-emerald-50 px-2 py-0.5 rounded-md">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Admin Ativo</span>
+              </div>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded font-black uppercase ${
+                  storeStatus.isOpen ? 'bg-emerald-200 text-emerald-900' : 'bg-red-100 text-red-800'
+                }`}
+              >
+                {storeStatus.isOpen ? 'Loja Aberta' : 'Loja Fechada'}
+              </span>
             </div>
           </div>
 
           <nav className="space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  id={`admin-tab-${item.id}`}
-                  onClick={() => handleSelectTab(item.id)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
-                    isActive
-                      ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-slate-950' : 'text-slate-400'}`} />
-                  <span className="flex-1">{item.label}</span>
-                </button>
-              );
-            })}
+            {/* Dashboard Geral */}
+            <button
+              id="admin-tab-dashboard"
+              onClick={() => handleSelectTab('dashboard')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                activeTab === 'dashboard'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <LayoutDashboard className={`w-4 h-4 shrink-0 ${activeTab === 'dashboard' ? 'text-slate-950' : 'text-slate-400'}`} />
+              <span className="flex-1">Dashboard Geral</span>
+            </button>
+
+            {/* Pedidos */}
+            <button
+              id="admin-tab-orders"
+              onClick={() => handleSelectTab('orders')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                activeTab === 'orders'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <ClipboardList className={`w-4 h-4 shrink-0 ${activeTab === 'orders' ? 'text-slate-950' : 'text-slate-400'}`} />
+              <span className="flex-1">Pedidos</span>
+            </button>
+
+            {/* Franqueados */}
+            <button
+              id="admin-tab-franchisees"
+              onClick={() => handleSelectTab('franchisees')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                activeTab === 'franchisees'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Users className={`w-4 h-4 shrink-0 ${activeTab === 'franchisees' ? 'text-slate-950' : 'text-slate-400'}`} />
+              <span className="flex-1">Franqueados</span>
+            </button>
+
+            {/* Produtos */}
+            <button
+              id="admin-tab-products"
+              onClick={() => handleSelectTab('products')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                activeTab === 'products'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Cookie className={`w-4 h-4 shrink-0 ${activeTab === 'products' ? 'text-slate-950' : 'text-slate-400'}`} />
+              <span className="flex-1">Produtos</span>
+            </button>
+
+            {/* Categorias */}
+            <button
+              id="admin-tab-categories"
+              onClick={() => handleSelectTab('categories')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                activeTab === 'categories'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Tags className={`w-4 h-4 shrink-0 ${activeTab === 'categories' ? 'text-slate-950' : 'text-slate-400'}`} />
+              <span className="flex-1">Categorias</span>
+            </button>
+
+            {/* Dias e Horários de Funcionamento (Abre/Fecha Loja) */}
+            <button
+              id="admin-tab-schedule"
+              onClick={() => handleSelectTab('schedule')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                activeTab === 'schedule'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Clock className={`w-4 h-4 shrink-0 ${activeTab === 'schedule' ? 'text-slate-950' : 'text-slate-400'}`} />
+              <span className="flex-1">Dias e Horários</span>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
+                  storeStatus.isOpen ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                {storeStatus.isOpen ? 'Aberta' : 'Fechada'}
+              </span>
+            </button>
+
+            {/* Integração BlueFocus */}
+            <button
+              id="admin-tab-bluefocus"
+              onClick={() => handleSelectTab('bluefocus')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                activeTab === 'bluefocus'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Cpu className={`w-4 h-4 shrink-0 ${activeTab === 'bluefocus' ? 'text-slate-950' : 'text-slate-400'}`} />
+              <span className="flex-1">Integração BlueFocus</span>
+            </button>
+
+            {/* Configurações */}
+            <button
+              id="admin-tab-settings"
+              onClick={() => handleSelectTab('settings')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Settings className={`w-4 h-4 shrink-0 ${activeTab === 'settings' ? 'text-slate-950' : 'text-slate-400'}`} />
+              <span className="flex-1">Configurações</span>
+            </button>
           </nav>
 
           {/* Quick Action Buttons & Logout in Sidebar */}
@@ -321,6 +437,7 @@ export const AdminPanel: React.FC = () => {
             {activeTab === 'franchisees' && <FranchiseesManager />}
             {activeTab === 'products' && <ProductsManager />}
             {activeTab === 'categories' && <CategoriesManager />}
+            {activeTab === 'schedule' && <StoreScheduleManager />}
             {activeTab === 'bluefocus' && <BlueFocusManager />}
             {activeTab === 'settings' && <SettingsManager />}
           </ErrorBoundary>

@@ -10,6 +10,7 @@ import {
   OrderStatusHistoryItem,
   PaymentRecord,
   Product,
+  StoreScheduleSettings,
 } from '../src/types.js';
 
 interface DatabaseSchema {
@@ -57,13 +58,13 @@ const initialSettings: CompanySettings = {
   },
   blueFocus: {
     apiUrl: process.env.BLUEFOCUS_API_URL || 'https://www.app.bluefocus.com.br/BlueFocusCloud',
-    apiKey: process.env.BLUEFOCUS_API_KEY || 'c89f2aab-5aa6-451d-8da8-06709422d3da',
+    apiKey: process.env.BLUEFOCUS_API_KEY || 'b022f872-e257-4453-beba-3e4f4bf5ab19',
     enabled: true,
     syncMode: 'automatic',
-    autentica: 'c89f2aab-5aa6-451d-8da8-06709422d3da',
-    empresaId: 'EMPRESATESTE',
-    usuarioId: 'CAIXA',
-    pdvCodigo: 2,
+    autentica: 'b022f872-e257-4453-beba-3e4f4bf5ab19',
+    empresaId: 'MARCOSFELI',
+    usuarioId: 'ADMIN',
+    pdvCodigo: 1,
     serverEnvironment: 'cloud',
     localServerUrl: 'http://localhost:8082',
     importProductsUrl: 'https://www.app.bluefocus.com.br/BlueFocusCloud/servlet/aintegracaofcxexportacadsat?wsdl',
@@ -71,6 +72,25 @@ const initialSettings: CompanySettings = {
     exportSalesUrl: 'https://www.app.bluefocus.com.br/BlueFocusCloud/servlet/aintegracaofcxregprevendasat?wsdl',
     defaultUpdateType: 'C',
     autoExportOrders: true,
+    autoSyncEvery2Hours: true,
+    lastSyncAt: new Date().toISOString(),
+    nextSyncAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+  },
+  storeSchedule: {
+    enabled: true,
+    manualOverride: 'force_open',
+    forceReason: '',
+    closedMessage: 'No momento nossa loja de fábrica está fechada para novos pedidos. Consulte nossos horários de atendimento.',
+    blockOrdersWhenClosed: false,
+    days: [
+      { day: 'monday', dayLabel: 'Segunda-feira', isOpen: true, openTime: '08:00', closeTime: '18:00' },
+      { day: 'tuesday', dayLabel: 'Terça-feira', isOpen: true, openTime: '08:00', closeTime: '18:00' },
+      { day: 'wednesday', dayLabel: 'Quarta-feira', isOpen: true, openTime: '08:00', closeTime: '18:00' },
+      { day: 'thursday', dayLabel: 'Quinta-feira', isOpen: true, openTime: '08:00', closeTime: '18:00' },
+      { day: 'friday', dayLabel: 'Sexta-feira', isOpen: true, openTime: '08:00', closeTime: '18:00' },
+      { day: 'saturday', dayLabel: 'Sábado', isOpen: true, openTime: '08:00', closeTime: '14:00' },
+      { day: 'sunday', dayLabel: 'Domingo', isOpen: false, openTime: '08:00', closeTime: '12:00' },
+    ],
   },
   tvPanel: {
     alertSoundEnabled: true,
@@ -122,7 +142,7 @@ const initialCategories: Category[] = [
   },
 ];
 
-const initialProducts: Product[] = [
+const sampleDemoProducts: Product[] = [
   {
     id: 'prod-1',
     name: 'Coxinha Especial de Frango c/ Catupiry (100g)',
@@ -257,140 +277,9 @@ const initialProducts: Product[] = [
   },
 ];
 
-const initialFranchisees: (Franchisee & { passwordHash?: string })[] = [
-  {
-    id: 'fran-1',
-    companyName: 'Padaria & Lanchonete Estação Central Ltda',
-    tradeName: 'Estação Central dos Salgados (Simulação de Compra)',
-    document: '12.345.678/0001-90',
-    documentType: 'CNPJ',
-    phone: '(11) 3322-1100',
-    whatsapp: '(11) 98111-2233',
-    email: 'estacao.central@balbecparceiros.com.br',
-    address: {
-      street: 'Praça da Sé',
-      number: '250',
-      neighborhood: 'Sé',
-      city: 'São Paulo',
-      state: 'SP',
-      zipCode: '01001-000',
-    },
-    minimumOrderValue: 500.00, // Meta de R$ 500,00
-    status: 'active',
-    createdAt: '2025-01-15T09:00:00Z',
-    passwordHash: hashPassword('123456'),
-  },
-  {
-    id: 'fran-2',
-    companyName: 'Café & Conveniência Sul Eireli',
-    tradeName: 'Cafeteria e Salgaderia Sul',
-    document: '98.765.432/0001-10',
-    documentType: 'CNPJ',
-    phone: '(11) 5544-3322',
-    whatsapp: '(11) 97766-5544',
-    email: 'cafe.sul@balbecparceiros.com.br',
-    address: {
-      street: 'Avenida Santo Amaro',
-      number: '3410',
-      neighborhood: 'Brooklin',
-      city: 'São Paulo',
-      state: 'SP',
-      zipCode: '04556-300',
-    },
-    minimumOrderValue: 300.00, // Meta de R$ 300,00
-    status: 'active',
-    createdAt: '2025-02-10T14:30:00Z',
-    passwordHash: hashPassword('123456'),
-  },
-  {
-    id: 'fran-3',
-    companyName: 'João da Silva ME',
-    tradeName: 'Lanchonete Silva & Filhos',
-    document: '123.456.789-00',
-    documentType: 'CPF',
-    phone: '(11) 2987-6543',
-    whatsapp: '(11) 99123-4567',
-    email: 'joao.silva@balbecparceiros.com.br',
-    address: {
-      street: 'Rua Voluntários da Pátria',
-      number: '890',
-      neighborhood: 'Santana',
-      city: 'São Paulo',
-      state: 'SP',
-      zipCode: '02010-100',
-    },
-    minimumOrderValue: 1000.00, // Meta de R$ 1.000,00
-    status: 'active',
-    createdAt: '2025-03-01T10:15:00Z',
-    passwordHash: hashPassword('123456'),
-  },
-  {
-    id: 'fran-4',
-    companyName: 'Mercado & Empório Central ME',
-    tradeName: 'Mercado Central',
-    document: '55.666.777/0001-88',
-    documentType: 'CNPJ',
-    phone: '(11) 4433-2211',
-    whatsapp: '(11) 98899-0011',
-    email: 'mercadocentral@balbecparceiros.com.br',
-    address: {
-      street: 'Rua da Cantareira',
-      number: '306',
-      neighborhood: 'Centro',
-      city: 'São Paulo',
-      state: 'SP',
-      zipCode: '01024-000',
-    },
-    minimumOrderValue: 500.00,
-    status: 'active',
-    createdAt: '2025-03-05T11:00:00Z',
-    passwordHash: hashPassword('123456'),
-  },
-  {
-    id: 'fran-5',
-    companyName: 'Empório do Sabor Ltda',
-    tradeName: 'Empório do Sabor (Bloqueado p/ teste)',
-    document: '11.222.333/0001-44',
-    documentType: 'CNPJ',
-    phone: '(11) 4002-8922',
-    whatsapp: '(11) 98877-6655',
-    email: 'bloqueado@balbecparceiros.com.br',
-    address: {
-      street: 'Avenida Paulista',
-      number: '1000',
-      neighborhood: 'Bela Vista',
-      city: 'São Paulo',
-      state: 'SP',
-      zipCode: '01310-100',
-    },
-    minimumOrderValue: 400.00,
-    status: 'blocked', // Teste de bloqueio de acesso
-    createdAt: '2025-02-20T08:00:00Z',
-    passwordHash: hashPassword('123456'),
-  },
-  {
-    id: 'fran-6',
-    companyName: 'Quiosque Avenida Eireli',
-    tradeName: 'Quiosque Avenida (Inativo p/ teste)',
-    document: '444.555.666-77',
-    documentType: 'CPF',
-    phone: '(11) 3211-9988',
-    whatsapp: '(11) 97788-9900',
-    email: 'inativo@balbecparceiros.com.br',
-    address: {
-      street: 'Rua Augusta',
-      number: '500',
-      neighborhood: 'Consolação',
-      city: 'São Paulo',
-      state: 'SP',
-      zipCode: '01305-000',
-    },
-    minimumOrderValue: 350.00,
-    status: 'inactive', // Teste de inativação
-    createdAt: '2025-01-28T16:00:00Z',
-    passwordHash: hashPassword('123456'),
-  },
-];
+const initialProducts: Product[] = [];
+
+const initialFranchisees: (Franchisee & { passwordHash?: string })[] = [];
 
 const now = new Date();
 const formattedDate = now.toISOString();
@@ -602,6 +491,10 @@ class DatabaseService {
             ...initialSettings.blueFocus,
             ...(parsed.settings.blueFocus || {}),
           };
+          parsed.settings.storeSchedule = {
+            ...initialSettings.storeSchedule,
+            ...(parsed.settings.storeSchedule || {}),
+          };
         }
         return parsed;
       }
@@ -698,12 +591,71 @@ class DatabaseService {
     return this.data.products[idx];
   }
 
+  bulkUpdateCategory(productIds: string[], categoryId: string): number {
+    let count = 0;
+    for (const id of productIds) {
+      const p = this.data.products.find((item) => item.id === id);
+      if (p) {
+        p.categoryId = categoryId;
+        count++;
+      }
+    }
+    if (count > 0) {
+      this.saveData();
+    }
+    return count;
+  }
+
   deleteProduct(id: string): boolean {
-    const prod = this.data.products.find((p) => p.id === id);
-    if (!prod) return false;
-    prod.isDeleted = true;
+    const idx = this.data.products.findIndex((p) => p.id === id);
+    if (idx === -1) return false;
+    this.data.products.splice(idx, 1);
     this.saveData();
     return true;
+  }
+
+  deleteAllProducts(): number {
+    const count = this.data.products.length;
+    this.data.products = [];
+    this.saveData();
+    return count;
+  }
+
+  restoreDefaultProducts(): number {
+    this.data.products = JSON.parse(JSON.stringify(sampleDemoProducts));
+    this.saveData();
+    return this.data.products.length;
+  }
+
+  upsertProduct(product: Omit<Product, 'id' | 'createdAt'> & { id?: string }): Product {
+    const existingIdx = this.data.products.findIndex(
+      (p) =>
+        (product.id && p.id === product.id) ||
+        (product.internalCode && p.internalCode === product.internalCode)
+    );
+
+    if (existingIdx >= 0) {
+      const existing = this.data.products[existingIdx];
+      this.data.products[existingIdx] = {
+        ...existing,
+        ...product,
+        // Preserve any custom photo if the incoming sync does not have one
+        imageUrl: (product.imageUrl && product.imageUrl.trim() !== '') ? product.imageUrl : (existing.imageUrl || ''),
+        id: existing.id,
+        createdAt: existing.createdAt,
+      };
+      this.saveData();
+      return this.data.products[existingIdx];
+    }
+
+    const newProd: Product = {
+      ...product,
+      id: product.id || `prod-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      createdAt: new Date().toISOString(),
+    };
+    this.data.products.push(newProd);
+    this.saveData();
+    return newProd;
   }
 
   // Franchisees
@@ -879,6 +831,14 @@ class DatabaseService {
     return this.data.orders[idx];
   }
 
+  deleteOrder(orderId: string): boolean {
+    const idx = this.data.orders.findIndex((o) => o.id === orderId);
+    if (idx === -1) return false;
+    this.data.orders.splice(idx, 1);
+    this.saveData();
+    return true;
+  }
+
   // Payments
   createPayment(paymentData: Omit<PaymentRecord, 'id' | 'createdAt'>): PaymentRecord {
     const newPayment: PaymentRecord = {
@@ -924,6 +884,10 @@ class DatabaseService {
         ...this.data.settings.blueFocus,
         ...(updates.blueFocus || {}),
       },
+      storeSchedule: {
+        ...(this.data.settings.storeSchedule || initialSettings.storeSchedule),
+        ...(updates.storeSchedule || {}),
+      } as StoreScheduleSettings,
       tvPanel: {
         ...this.data.settings.tvPanel,
         ...(updates.tvPanel || {}),

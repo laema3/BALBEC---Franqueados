@@ -366,87 +366,201 @@ ${parcelaXml}
     xmlSent: string;
     sampleXmlReceived: string;
     products: Product[];
+    error?: string;
   }> {
-    const config = this.getConfig();
+    let config = this.getConfig();
     const logId = `bf-import-${Date.now()}`;
     const tipo = options?.tipoAtualizacao || config.defaultUpdateType || 'C';
-    const startId = options?.startProdutoId || 0;
-
-    const xml = this.generateExportaCadSatXml({
-      empresaId: config.empresaId || 'EMPRESATESTE',
-      usuarioId: config.usuarioId || 'CAIXA',
-      pdvCodigo: config.pdvCodigo || 2,
-      tipoAtualizacao: tipo,
-      produtoId: startId,
-    });
+    let startId = options?.startProdutoId || 0;
 
     const targetUrl = config.importProductsUrl || 'https://www.app.bluefocus.com.br/BlueFocusCloud/servlet/aintegracaofcxexportacadsat?wsdl';
 
-    // Sample official response based on PDF pages 2-7
-    const sampleXml = `<?xml version="1.0" encoding="utf-8"?>
-<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
-<SOAP-ENV:Body>
-<IntegracaoFcxExportaCadSAT.ExecuteResponse xmlns="Valim">
-<Sdtwebservicesaidaexpcadastrosat xmlns="Valim">
-<MsgErro/>
-<SNFim>S</SNFim>
-<DataHoraInicio>2025-01-01T00:00:00</DataHoraInicio>
-<ProdutoItem>
-<TipoAtualizacao>${tipo}</TipoAtualizacao>
-<ProdutoId>101</ProdutoId>
-<ProdutoDescricaoResumida>COXINHA FRANGO CATUPIRY 100G</ProdutoDescricaoResumida>
-<ProdutoDescricao>COXINHA ESPECIAL DE FRANGO COM REQUEIJAO CATUPIRY 100G</ProdutoDescricao>
-<ProdutoObservacao>Frito na hora, massa artesanal crocante</ProdutoObservacao>
-<ProdutoUnidadeVendaId>UN</ProdutoUnidadeVendaId>
-<ProdutoUnidadeVendaDesc>UNIDADE</ProdutoUnidadeVendaDesc>
-<ProdutoFamiliaId>000001</ProdutoFamiliaId>
-<ProdutoFamiliaDescricao>Salgados Fritos</ProdutoFamiliaDescricao>
-<NCMCodigo>19022000</NCMCodigo>
-<CodigoBarrasItem><CodigoBarras>7891000101011</CodigoBarras></CodigoBarrasItem>
-</ProdutoItem>
-<ProdutoItem>
-<TipoAtualizacao>${tipo}</TipoAtualizacao>
-<ProdutoId>201</ProdutoId>
-<ProdutoDescricaoResumida>ESFIHA CARNE TEMPERADA 120G</ProdutoDescricaoResumida>
-<ProdutoDescricao>ESFIHA FECHADA DE CARNE TEMPERADA ESPECIAL 120G</ProdutoDescricao>
-<ProdutoObservacao>Assada no forno a lenha, tempero sirio</ProdutoObservacao>
-<ProdutoUnidadeVendaId>UN</ProdutoUnidadeVendaId>
-<ProdutoUnidadeVendaDesc>UNIDADE</ProdutoUnidadeVendaDesc>
-<ProdutoFamiliaId>000002</ProdutoFamiliaId>
-<ProdutoFamiliaDescricao>Salgados Assados</ProdutoFamiliaDescricao>
-<NCMCodigo>19022000</NCMCodigo>
-<CodigoBarrasItem><CodigoBarras>7891000201022</CodigoBarras></CodigoBarrasItem>
-</ProdutoItem>
-</Sdtwebservicesaidaexpcadastrosat>
-</IntegracaoFcxExportaCadSAT.ExecuteResponse>
-</SOAP-ENV:Body>
-</SOAP-ENV:Envelope>`;
+    // Helper to extract tag value from XML block
+    const extractTag = (block: string, tag: string): string => {
+      const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+      return m ? m[1].trim() : '';
+    };
 
-    try {
-      // Execute call
-      let responseXml = sampleXml;
+    // Helper to make SOAP request with timeout
+    const fetchSoapPage = async (empresa: string, user: string, pdv: number, prodId: number): Promise<{ ok: boolean; text: string; error?: string }> => {
+      const reqXml = this.generateExportaCadSatXml({
+        empresaId: empresa,
+        usuarioId: user,
+        pdvCodigo: pdv,
+        tipoAtualizacao: tipo,
+        produtoId: prodId,
+      });
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 16000);
+
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
         const res = await fetch(targetUrl, {
           method: 'POST',
           headers: this.buildSoapHeaders(config.autentica),
-          body: xml,
+          body: reqXml,
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
-        if (res.ok) {
-          const text = await res.text();
-          if (text.includes('ProdutoItem') || text.includes('ExecuteResponse')) {
-            responseXml = text;
-          }
+        const text = await res.text();
+        return { ok: res.ok, text };
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        return { ok: false, text: '', error: err.message };
+      }
+    };
+
+    try {
+      let activeEmpresa = config.empresaId || 'MARCOSFELI';
+      let activeUsuario = config.usuarioId || 'ADMIN';
+      let activePdv = config.pdvCodigo || 1;
+
+      // 1. First attempt with configured credentials
+      let page1 = await fetchSoapPage(activeEmpresa, activeUsuario, activePdv, startId);
+
+      // Check for error in XML
+      let msgErro = extractTag(page1.text, 'MsgErro');
+
+      // Auto-fallback: if user configured invalid user/pdv (e.g. 1000 or PDV 2 which doesn't exist on BlueFocus)
+      if (msgErro && (msgErro.includes('não cadastrado') || msgErro.includes('inválid'))) {
+        console.warn(`[BlueFocus] Erro na tentativa com ${activeUsuario}/PDV ${activePdv}: "${msgErro}". Tentando credenciais verificadas ADMIN / PDV 1...`);
+        const retryPage = await fetchSoapPage(activeEmpresa, 'ADMIN', 1, startId);
+        const retryMsg = extractTag(retryPage.text, 'MsgErro');
+        if (!retryMsg && retryPage.text.includes('ProdutoItem')) {
+          // Success with ADMIN / 1! Update configuration
+          activeUsuario = 'ADMIN';
+          activePdv = 1;
+          page1 = retryPage;
+          msgErro = '';
+          db.updateSettings({
+            blueFocus: {
+              ...config,
+              usuarioId: 'ADMIN',
+              pdvCodigo: 1,
+            },
+          });
+          config = this.getConfig();
         }
-      } catch {
-        // Fallback to sample
       }
 
-      // Sync categories & products to BALBEC catalog if needed
-      const currentProducts = db.getProducts();
+      // If still error, return clear explanation
+      if (msgErro) {
+        const log: BlueFocusSyncLog = {
+          id: logId,
+          action: 'IMPORT_PRODUCTS',
+          status: 'failed',
+          timestamp: new Date().toISOString(),
+          endpoint: targetUrl,
+          xmlResponse: page1.text.slice(0, 800),
+          payloadSummary: `Erro retornado pelo BlueFocus: ${msgErro}`,
+          error: msgErro,
+        };
+        this.syncLogs.push(log);
+
+        return {
+          success: false,
+          error: msgErro,
+          message: `Erro retornado pelo ERP BlueFocus: "${msgErro}". Verifique nas configurações se o Usuário (${activeUsuario}) e PDV (${activePdv}) estão corretos para a empresa ${activeEmpresa}.`,
+          importedCount: 0,
+          snFim: 'S',
+          xmlSent: '',
+          sampleXmlReceived: page1.text.slice(0, 1000),
+          products: db.getProducts(),
+        };
+      }
+
+      // 2. Collect product items across pages
+      const rawProductBlocks: string[] = [];
+      const matchP1 = page1.text.match(/<ProdutoItem>[\s\S]*?<\/ProdutoItem>/gi) || [];
+      rawProductBlocks.push(...matchP1);
+
+      // If page 1 had SNFim = N and we started at 0, fetch page 2 (startId = 1) to get the salgados catalog
+      const snFimP1 = extractTag(page1.text, 'SNFim');
+      if (snFimP1 === 'N' && startId === 0) {
+        const page2 = await fetchSoapPage(activeEmpresa, activeUsuario, activePdv, 1);
+        const matchP2 = page2.text.match(/<ProdutoItem>[\s\S]*?<\/ProdutoItem>/gi) || [];
+        rawProductBlocks.push(...matchP2);
+      }
+
+      // Filter out non-products (imobilizado / insumos) and parse valid commercial items
+      const ignoredFamilies = ['ATIVO IMOBILIZADO', 'MATERIA PRIMA - INDUSTRIALIZAC', 'USO E CONSUMO'];
+      const processedProducts: Product[] = [];
+      const existingCategories = db.getCategories();
+
+      // Ensure categories exist
+      const getOrCreateCategory = (familyName: string): string => {
+        const cleanName = familyName.trim();
+        let catName = 'Salgados';
+        const fUpper = cleanName.toUpperCase();
+
+        if (fUpper.includes('SALGAD') || fUpper.includes('FRITO') || fUpper.includes('ASSADO')) {
+          catName = 'Salgados Tradicionais';
+        } else if (fUpper.includes('BEBIDA') || fUpper.includes('REFRIG') || fUpper.includes('SUCO')) {
+          catName = 'Bebidas & Sucos';
+        } else if (fUpper.includes('DOCE') || fUpper.includes('SORVETE') || fUpper.includes('SOBREM')) {
+          catName = 'Doces & Sobremesas';
+        } else if (cleanName) {
+          catName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+        }
+
+        const found = existingCategories.find((c) => c.name.toLowerCase() === catName.toLowerCase());
+        if (found) return found.id;
+
+        const newCat = db.createCategory({
+          name: catName,
+          description: `Categoria sincronizada do ERP BlueFocus (${cleanName})`,
+          displayOrder: existingCategories.length + 1,
+          status: 'active',
+        });
+        existingCategories.push(newCat);
+        return newCat.id;
+      };
+
+      for (const block of rawProductBlocks) {
+        const pId = extractTag(block, 'ProdutoId');
+        const desc = extractTag(block, 'ProdutoDescricao') || extractTag(block, 'ProdutoDescricaoResumida');
+        const family = extractTag(block, 'ProdutoFamiliaDescricao') || 'SALGADO';
+        const rawPreco = extractTag(block, 'PrecoProdutoValor');
+        const obs = extractTag(block, 'ProdutoObservacao');
+        const barcode = extractTag(block, 'CodigoBarras');
+
+        if (!pId || !desc) continue;
+        if (ignoredFamilies.includes(family.toUpperCase())) continue;
+
+        let preco = parseFloat(rawPreco);
+        if (isNaN(preco) || preco <= 0) {
+          // If salgado without registered price in PDV, default to standard franchise salgado price
+          if (family.toUpperCase().includes('SALGAD')) {
+            preco = 6.50;
+          } else {
+            continue; // Skip items without price that are not salgados
+          }
+        }
+
+        // Clean name formatting (Title Case)
+        const cleanName = desc
+          .toLowerCase()
+          .split(' ')
+          .map((w) => (w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+          .join(' ');
+
+        const categoryId = getOrCreateCategory(family);
+        // Sem fotos genéricas: se não houver foto real cadastrada, mantém sem foto
+        const imageUrl = '';
+
+        const savedProduct = db.upsertProduct({
+          id: `bf-${pId}`,
+          name: cleanName,
+          description: obs || `Item oficial sincronizado do ERP BlueFocus (Cód: ${pId}${barcode ? ` / Barras: ${barcode}` : ''})`,
+          categoryId,
+          price: Number(preco.toFixed(2)),
+          imageUrl,
+          internalCode: `BF-${pId}`,
+          status: 'active',
+        });
+
+        processedProducts.push(savedProduct);
+      }
 
       // Update sync timestamp in settings
       db.updateSettings({
@@ -456,38 +570,38 @@ ${parcelaXml}
         },
       });
 
+      const allCurrent = db.getProducts();
+
       const log: BlueFocusSyncLog = {
         id: logId,
         action: 'IMPORT_PRODUCTS',
         status: 'success',
         timestamp: new Date().toISOString(),
         endpoint: targetUrl,
-        xmlRequest: xml,
-        xmlResponse: responseXml,
-        payloadSummary: `Importação de Produtos SOAP (TipoAtualizacao: ${tipo}, ProdutoId Inicial: ${startId})`,
-        responseSummary: `Importação concluída. ${currentProducts.length} itens do catálogo catalogados com sucesso.`,
+        payloadSummary: `Sincronização de Produtos BlueFocus (Empresa: ${activeEmpresa}, Operador: ${activeUsuario}, PDV: ${activePdv})`,
+        responseSummary: `Sucesso! ${processedProducts.length} itens comerciais processados e catalogados. Total atual no catálogo: ${allCurrent.length}.`,
       };
       this.syncLogs.push(log);
 
       return {
         success: true,
-        importedCount: currentProducts.length,
+        importedCount: processedProducts.length,
         snFim: 'S',
-        message: `Importação BlueFocus processada com sucesso via WebService ExportaCadSAT!`,
-        xmlSent: xml,
-        sampleXmlReceived: responseXml,
-        products: currentProducts,
+        message: `Sincronização concluída com sucesso! ${processedProducts.length} salgados e produtos importados diretamente do ERP BlueFocus.`,
+        xmlSent: this.generateExportaCadSatXml({ empresaId: activeEmpresa, usuarioId: activeUsuario, pdvCodigo: activePdv, tipoAtualizacao: tipo }),
+        sampleXmlReceived: page1.text.slice(0, 600),
+        products: allCurrent,
       };
     } catch (err: any) {
+      console.error('Error in importProducts:', err);
       const log: BlueFocusSyncLog = {
         id: logId,
         action: 'IMPORT_PRODUCTS',
         status: 'failed',
         timestamp: new Date().toISOString(),
         endpoint: targetUrl,
-        xmlRequest: xml,
         error: err.message,
-        payloadSummary: `Falha na importação de produtos BlueFocus`,
+        payloadSummary: `Falha na importação de produtos BlueFocus: ${err.message}`,
       };
       this.syncLogs.push(log);
 
@@ -495,10 +609,11 @@ ${parcelaXml}
         success: false,
         importedCount: 0,
         snFim: 'S',
-        message: `Erro ao importar produtos da BlueFocus: ${err.message}`,
-        xmlSent: xml,
+        error: err.message,
+        message: `Falha de comunicação com o WebService BlueFocus: ${err.message}`,
+        xmlSent: '',
         sampleXmlReceived: '',
-        products: [],
+        products: db.getProducts(),
       };
     }
   }
@@ -739,6 +854,124 @@ ${results
 
     return { exportedCount, errorsCount, results };
   }
+
+  /**
+   * Execute full synchronization cycle (Import products + Export orders)
+   * and update next 2-hour schedule timestamps.
+   */
+  async executeFullSync(triggerType: 'scheduled_2h' | 'manual' = 'scheduled_2h'): Promise<{
+    success: boolean;
+    message: string;
+    importedCount: number;
+    exportedCount: number;
+    lastSyncAt: string;
+    nextSyncAt: string;
+  }> {
+    const config = this.getConfig();
+    const now = new Date();
+    const nextSync = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours later
+
+    const logId = `bf-autosync-${Date.now()}`;
+    console.log(`[BlueFocus AutoSync] Starting ${triggerType} sync cycle...`);
+
+    let importedCount = 0;
+    let exportedCount = 0;
+
+    try {
+      // 1. Import products
+      const prodRes = await this.importProducts({ tipoAtualizacao: config.defaultUpdateType || 'C' });
+      importedCount = prodRes.importedCount || 0;
+
+      // 2. Export pending orders
+      const ordersRes = await this.exportAllPendingOrders();
+      exportedCount = ordersRes.exportedCount || 0;
+
+      // 3. Update database settings with sync timestamps
+      const updatedConfig = {
+        ...config,
+        lastSyncAt: now.toISOString(),
+        nextSyncAt: nextSync.toISOString(),
+      };
+      db.updateSettings({ blueFocus: updatedConfig });
+
+      const log: BlueFocusSyncLog = {
+        id: logId,
+        action: 'CHECK_STATUS',
+        status: 'success',
+        timestamp: now.toISOString(),
+        endpoint: config.apiUrl || 'https://www.app.bluefocus.com.br/BlueFocusCloud',
+        payloadSummary: `Sincronização automática a cada 2 horas (${triggerType})`,
+        responseSummary: `Ciclo concluído. Produtos importados: ${importedCount} | Pedidos exportados: ${exportedCount}. Próxima sincronização: ${nextSync.toLocaleTimeString('pt-BR')}`,
+      };
+      this.syncLogs.push(log);
+
+      return {
+        success: true,
+        message: `Sincronização automática (2h) realizada com sucesso! Produtos: ${importedCount}, Pedidos: ${exportedCount}.`,
+        importedCount,
+        exportedCount,
+        lastSyncAt: now.toISOString(),
+        nextSyncAt: nextSync.toISOString(),
+      };
+    } catch (err: any) {
+      console.error('[BlueFocus AutoSync] Error executing sync cycle:', err);
+      const log: BlueFocusSyncLog = {
+        id: logId,
+        action: 'CHECK_STATUS',
+        status: 'warning',
+        timestamp: now.toISOString(),
+        endpoint: config.apiUrl || 'https://www.app.bluefocus.com.br/BlueFocusCloud',
+        payloadSummary: `Erro no ciclo de sincronização automática de 2h (${triggerType})`,
+        error: err.message,
+      };
+      this.syncLogs.push(log);
+
+      return {
+        success: false,
+        message: `Falha na sincronização automática: ${err.message}`,
+        importedCount: 0,
+        exportedCount: 0,
+        lastSyncAt: now.toISOString(),
+        nextSyncAt: nextSync.toISOString(),
+      };
+    }
+  }
+
+  /**
+   * Initializes background checking timer for the 2-hour auto sync cycle.
+   */
+  public initAutoSyncTimer(): void {
+    // Check every 60 seconds whether 2 hours have elapsed and if within Mon-Sat 08:00-18:00 window
+    setInterval(async () => {
+      try {
+        const config = this.getConfig();
+        if (!config.enabled || !config.autoSyncEvery2Hours) {
+          return;
+        }
+
+        const now = new Date();
+        const day = now.getDay(); // 0 = Domingo, 1 = Segunda ... 6 = Sábado
+        const hour = now.getHours();
+
+        // Apenas de segunda (1) a sábado (6), das 08:00 às 18:00
+        if (day === 0 || hour < 8 || hour >= 18) {
+          return;
+        }
+
+        const nowMs = now.getTime();
+        const lastSync = config.lastSyncAt ? new Date(config.lastSyncAt).getTime() : 0;
+        const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+        if (nowMs - lastSync >= TWO_HOURS_MS) {
+          console.log('[BlueFocus Timer] Mon-Sat 08:00-18:00 window active and 2 hours reached! Executing automatic sync...');
+          await this.executeFullSync('scheduled_2h');
+        }
+      } catch (err) {
+        console.error('[BlueFocus Timer] Error during timer evaluation:', err);
+      }
+    }, 60 * 1000);
+  }
 }
 
 export const blueFocusService = new BlueFocusService();
+blueFocusService.initAutoSyncTimer();

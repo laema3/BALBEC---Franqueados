@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext.js';
 import { useApp } from '../../context/AppContext.js';
 import { formatCurrency, maskCpfCnpj } from '../../utils/formatters.js';
 import { Order, PaymentMethod } from '../../types.js';
+import { checkStoreStatus } from '../../utils/schedule.js';
 
 export const CheckoutModal: React.FC = () => {
   const {
@@ -28,11 +29,14 @@ export const CheckoutModal: React.FC = () => {
     setIsCheckoutModalOpen,
   } = useCart();
   const { franchisee, user } = useAuth();
-  const { setCurrentView } = useApp();
+  const { setCurrentView, settings } = useApp();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const storeStatus = checkStoreStatus(settings?.storeSchedule);
+  const isBlockedBySchedule = !storeStatus.isOpen && !!settings?.storeSchedule?.blockOrdersWhenClosed;
 
   // Completed order state
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
@@ -44,6 +48,10 @@ export const CheckoutModal: React.FC = () => {
 
   const handleConfirmOrder = async () => {
     if (!franchisee) return;
+    if (isBlockedBySchedule) {
+      setErrorMsg(`A fábrica está fechada no momento (${storeStatus.statusDescription}). Novos pedidos estão temporariamente pausados.`);
+      return;
+    }
     setLoading(true);
     setErrorMsg(null);
 
@@ -391,15 +399,34 @@ export const CheckoutModal: React.FC = () => {
                 </div>
               </div>
 
+              {/* Store Closed Warning if blocked */}
+              {isBlockedBySchedule && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-800">
+                  <Clock className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold">Loja Fechada para Novos Pedidos</strong>
+                    <p className="text-[11px] text-red-700 mt-0.5">
+                      {settings?.storeSchedule?.closedMessage || 'A fábrica está fora do horário de atendimento. O envio de pedidos está temporariamente bloqueado.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Submit Button */}
               <button
                 id="btn-confirm-checkout"
                 onClick={handleConfirmOrder}
-                disabled={loading}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 px-4 rounded-xl text-sm uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                disabled={loading || isBlockedBySchedule}
+                className={`w-full font-black py-3.5 px-4 rounded-xl text-sm uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2 ${
+                  isBlockedBySchedule
+                    ? 'bg-slate-300 text-slate-600 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-98'
+                }`}
               >
                 {loading ? (
                   <span>Processando Pedido...</span>
+                ) : isBlockedBySchedule ? (
+                  <span>Loja Fechada no Momento</span>
                 ) : (
                   <>
                     <span>Confirmar Pedido ({formatCurrency(subtotal)})</span>

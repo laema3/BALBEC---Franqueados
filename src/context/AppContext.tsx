@@ -5,14 +5,14 @@ interface AppContextType {
   settings: CompanySettings | null;
   loadingSettings: boolean;
   refreshSettings: () => Promise<void>;
-  currentView: 'store' | 'admin' | 'tv' | 'orders';
-  setCurrentView: (view: 'store' | 'admin' | 'tv' | 'orders') => void;
+  currentView: 'store' | 'admin' | 'tv' | 'orders' | 'totem';
+  setCurrentView: (view: 'store' | 'admin' | 'tv' | 'orders' | 'totem') => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
   getTvUrl: () => string;
 }
 
-const parseViewFromLocation = (): 'store' | 'admin' | 'tv' | 'orders' => {
+const parseViewFromLocation = (): 'store' | 'admin' | 'tv' | 'orders' | 'totem' => {
   if (typeof window === 'undefined') return 'store';
   const path = window.location.pathname.toLowerCase();
   const search = new URLSearchParams(window.location.search);
@@ -26,6 +26,9 @@ const parseViewFromLocation = (): 'store' | 'admin' | 'tv' | 'orders' => {
   }
   if (path === '/orders' || path.startsWith('/orders/') || search.get('view') === 'orders' || hash === '#/orders') {
     return 'orders';
+  }
+  if (path === '/totem' || search.get('view') === 'totem' || hash === '#/totem') {
+    return 'totem';
   }
   return 'store';
 };
@@ -85,16 +88,17 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<CompanySettings | null>(defaultSettings);
   const [loadingSettings, setLoadingSettings] = useState<boolean>(false);
-  const [currentView, setCurrentViewState] = useState<'store' | 'admin' | 'tv' | 'orders'>(() => parseViewFromLocation());
+  const [currentView, setCurrentViewState] = useState<'store' | 'admin' | 'tv' | 'orders' | 'totem'>(() => parseViewFromLocation());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const setCurrentView = (view: 'store' | 'admin' | 'tv' | 'orders') => {
+  const setCurrentView = (view: 'store' | 'admin' | 'tv' | 'orders' | 'totem') => {
     setCurrentViewState(view);
     if (typeof window !== 'undefined') {
       let targetPath = '/';
       if (view === 'tv') targetPath = '/tv';
       else if (view === 'admin') targetPath = '/admin';
       else if (view === 'orders') targetPath = '/orders';
+      else if (view === 'totem') targetPath = '/totem';
 
       if (window.location.pathname !== targetPath) {
         window.history.pushState({ view }, '', targetPath);

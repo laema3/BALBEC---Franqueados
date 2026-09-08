@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, AlertTriangle, CheckCircle2, Package } from 'lucide-react';
 import { useCart } from '../../context/CartContext.js';
 import { useAuth } from '../../context/AuthContext.js';
 import { formatCurrency } from '../../utils/formatters.js';
@@ -110,11 +110,17 @@ export const CartDrawer: React.FC = () => {
                 id={`cart-item-${item.product.id}`}
                 className="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 shadow-xs"
               >
-                <img
-                  src={item.product.imageUrl}
-                  alt={item.product.name}
-                  className="w-16 h-16 rounded-lg object-cover bg-slate-100 shrink-0"
-                />
+                {item.product.imageUrl ? (
+                  <img
+                    src={item.product.imageUrl}
+                    alt={item.product.name}
+                    className="w-16 h-16 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-amber-50 border border-amber-200/60 flex items-center justify-center shrink-0 text-amber-700">
+                    <Package className="w-6 h-6" />
+                  </div>
+                )}
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">

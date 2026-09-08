@@ -14,6 +14,7 @@ import { CheckoutModal } from './components/franchisee/CheckoutModal.js';
 import { OrdersHistoryModal } from './components/franchisee/OrdersHistoryModal.js';
 import { AdminPanel } from './components/admin/AdminPanel.js';
 import { TvPanel } from './components/tv/TvPanel.js';
+import { TotemPanel } from './components/totem/TotemPanel.js';
 import { LoginModal } from './components/auth/LoginModal.js';
 import { ErrorBoundary } from './components/common/ErrorBoundary.js';
 import { Phone, Mail, MapPin, Bell, Cpu, ExternalLink, Settings } from 'lucide-react';
@@ -44,6 +45,7 @@ const MainContent: React.FC = () => {
           {currentView === 'store' && <FranchiseeStore />}
           {currentView === 'orders' && <OrdersHistoryModal />}
           {currentView === 'admin' && <AdminPanel />}
+          {currentView === 'totem' && <TotemPanel onExit={() => setCurrentView('store')} />}
         </ErrorBoundary>
       </main>
 

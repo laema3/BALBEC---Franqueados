@@ -14,6 +14,7 @@ import {
   Sparkles,
   PhoneCall,
   ExternalLink,
+  Monitor,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.js';
 import { useCart } from '../context/CartContext.js';
@@ -245,6 +246,22 @@ export const Header: React.FC = () => {
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
+
+          {/* Totem Kiosk button */}
+          <button
+            id="nav-btn-totem"
+            onClick={() => setCurrentView('totem')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-bold text-xs sm:text-sm transition shadow-sm ${
+              currentView === 'totem'
+                ? 'bg-slate-900 text-white ring-2 ring-slate-900'
+                : 'bg-amber-600 hover:bg-amber-700 text-white'
+            }`}
+            title="Abrir Modo Totem de Autoatendimento"
+          >
+            <Monitor className="w-4 h-4" />
+            <span className="hidden lg:inline">Modo Totem</span>
+            <span className="lg:hidden">Totem</span>
+          </button>
 
           {/* Cart Trigger with prominent RED badge and goal indicator */}
           {currentView === 'store' && (

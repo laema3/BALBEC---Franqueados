@@ -17,11 +17,13 @@ import { TvPanel } from './components/tv/TvPanel.js';
 import { TotemPanel } from './components/totem/TotemPanel.js';
 import { LoginModal } from './components/auth/LoginModal.js';
 import { ErrorBoundary } from './components/common/ErrorBoundary.js';
-import { Phone, Mail, MapPin, Bell, Cpu, ExternalLink, Settings } from 'lucide-react';
+import { PrivacyModal } from './components/common/PrivacyModal.js';
+import { Phone, Mail, MapPin, Bell, Cpu, ExternalLink, Settings, ShieldCheck } from 'lucide-react';
 
 const MainContent: React.FC = () => {
   const { currentView, setCurrentView, settings, toastMessage } = useApp();
   const { role } = useAuth();
+  const [isPrivacyOpen, setIsPrivacyOpen] = React.useState(false);
 
   // Fullscreen TV View for in-store pickup TV
   if (currentView === 'tv') {
@@ -142,12 +144,27 @@ const MainContent: React.FC = () => {
                   <span>Painel Administrativo</span>
                 </button>
               </div>
+              <div>
+                <button
+                  onClick={() => setIsPrivacyOpen(true)}
+                  className="text-slate-400 hover:text-white flex items-center gap-1"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Política de Privacidade e Cookies</span>
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
             <div>© {new Date().getFullYear()} BALBEC Salgados — Sistema Operacional de Franquias</div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setIsPrivacyOpen(true)}
+                className="hover:text-slate-300 underline cursor-pointer"
+              >
+                Privacidade e Cookies
+              </button>
               {/* Prominent Gear Icon button for Admin Access in Footer */}
               <button
                 id="btn-footer-admin-gear"
@@ -162,6 +179,9 @@ const MainContent: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Privacy & Cookies Policy Modal */}
+      <PrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
     </div>
   );
 };

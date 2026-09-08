@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext.js';
 import { useApp } from '../../context/AppContext.js';
 import { formatCurrency, maskCpfCnpj } from '../../utils/formatters.js';
 import { checkStoreStatus } from '../../utils/schedule.js';
+import { DownloadAppBanner } from './DownloadAppBanner.js';
 
 export const FranchiseeStore: React.FC = () => {
   const { addItem, items, updateQuantity, setIsCartDrawerOpen } = useCart();
@@ -277,6 +278,9 @@ export const FranchiseeStore: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* Download App Banner (Only on Website, not on Totem) */}
+      <DownloadAppBanner />
+
       {/* Operating Schedule Notice Banner if Store is Closed */}
       {!storeStatus.isOpen && (
         <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white p-4 rounded-2xl shadow-sm border border-red-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

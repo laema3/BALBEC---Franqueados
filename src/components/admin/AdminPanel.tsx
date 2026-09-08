@@ -33,12 +33,13 @@ import { ProductsManager } from './ProductsManager.js';
 import { SettingsManager } from './SettingsManager.js';
 import { BlueFocusManager } from './BlueFocusManager.js';
 import { StoreScheduleManager } from './StoreScheduleManager.js';
+import { UsersManager } from './UsersManager.js';
 import { ErrorBoundary } from '../common/ErrorBoundary.js';
 import { useApp } from '../../context/AppContext.js';
 import { useAuth } from '../../context/AuthContext.js';
 import { checkStoreStatus } from '../../utils/schedule.js';
 
-type AdminTab = 'dashboard' | 'orders' | 'franchisees' | 'products' | 'categories' | 'schedule' | 'bluefocus' | 'settings';
+type AdminTab = 'dashboard' | 'orders' | 'franchisees' | 'products' | 'categories' | 'schedule' | 'bluefocus' | 'settings' | 'users';
 
 export const AdminPanel: React.FC = () => {
   const { setCurrentView, settings } = useApp();
@@ -383,6 +384,22 @@ export const AdminPanel: React.FC = () => {
               <Settings className={`w-4 h-4 shrink-0 ${activeTab === 'settings' ? 'text-slate-950' : 'text-slate-400'}`} />
               <span className="flex-1">Configurações</span>
             </button>
+
+            {/* Usuários (Disponível apenas para usuários master / admin) */}
+            {user?.role === 'admin' && (
+              <button
+                id="admin-tab-users"
+                onClick={() => handleSelectTab('users')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                  activeTab === 'users'
+                    ? 'bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-600'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <Users className={`w-4 h-4 shrink-0 ${activeTab === 'users' ? 'text-slate-950' : 'text-slate-400'}`} />
+                <span className="flex-1">Usuários Master</span>
+              </button>
+            )}
           </nav>
 
           {/* Quick Action Buttons & Logout in Sidebar */}
@@ -440,6 +457,7 @@ export const AdminPanel: React.FC = () => {
             {activeTab === 'schedule' && <StoreScheduleManager />}
             {activeTab === 'bluefocus' && <BlueFocusManager />}
             {activeTab === 'settings' && <SettingsManager />}
+            {activeTab === 'users' && <UsersManager />}
           </ErrorBoundary>
         </main>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   Palette,
@@ -20,6 +20,12 @@ export const SettingsManager: React.FC = () => {
   const [formData, setFormData] = useState<CompanySettings>(() => {
     return settings || ({} as CompanySettings);
   });
+
+  useEffect(() => {
+    if (settings) {
+      setFormData(settings);
+    }
+  }, [settings]);
   const [saving, setSaving] = useState(false);
   const [testNotificationStatus, setTestNotificationStatus] = useState<string | null>(null);
   const [testBlueFocusStatus, setTestBlueFocusStatus] = useState<string | null>(null);

@@ -172,9 +172,17 @@ export const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Logo & Brand Name */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentView('store')}>
-          <div className="w-11 h-11 bg-slate-900 rounded-xl flex items-center justify-center shadow-md border-2 border-amber-300">
-            <span className="text-xl font-black text-amber-400 tracking-tighter">B</span>
-          </div>
+          {settings?.logoUrl ? (
+            <img
+              src={settings.logoUrl}
+              alt="Logo"
+              className="w-11 h-11 rounded-xl object-contain bg-slate-900 shadow-md border-2 border-amber-300 p-0.5"
+            />
+          ) : (
+            <div className="w-11 h-11 bg-slate-900 rounded-xl flex items-center justify-center shadow-md border-2 border-amber-300">
+              <span className="text-xl font-black text-amber-400 tracking-tighter">B</span>
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-2xl font-black text-slate-950 tracking-tight">BALBEC</span>
